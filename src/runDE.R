@@ -1,8 +1,22 @@
-getDE <- function(dds, comparison) {
-    #write output full DESeq2 datatable
-    #write output select DEG datatable
-    #write output list of up genes
-    #write output list of down genes
+getDE <- function(dds, comparison, filestem, p_thresh=0.05, fc_thresh=1) {
+    # pull from design and comparison list to generate the contrast
+    print(comparison)
+    group      <- unlist(as.character(design(dds))[-1])
+    comp <- unlist(str_split(comparison, pattern='_vs_'))
+    case <- comp[1]
+    ref  <- comp[2]
+
+    #write results tables
+    results    <- results(dds, alpha=0.05, contrast=c(group,case,ref))
+    results_de <- results %>% subset(log2FoldChange > fc_thresh | log2FoldChange < -fc_thresh) %>%
+                              subset(padj < p_thresh)
+    results_de   <- results_de[order(results_de$log2FoldChange), ] %>% data.frame
+    results_up   <- row.names(results_de[results_de$log2FoldChange > 0, ])
+    results_down <- row.names(results_de[results_de$log2FoldChange < 0, ])
+    write.csv(results,       glue('{filestem}_{comparison}_full.csv'))
+    write.csv(results_de,    glue('{filestem}_{comparison}_DE.csv'))
+    writeLines(results_up,   glue('{filestem}_{comparison}_up.txt'))
+    writeLines(results_down, glue('{filestem}_{comparison}_down.txt'))
 }
 
 source('src/utilities.R')
@@ -18,12 +32,24 @@ file        <- args$i
 comparisons <- readtxt(args$c)
 
 dds <- readRDS(file)
-dds <- DESeq2(dds)
 
-for(c in comparisons){
-    #get DE and write to file
-    #make volcano plots and write to file
+group_comparison <- as.character(design(dds))[-1]
+if ('Donor' %in% colnames(colData(dds))){
+    collapse_by        <- paste0(group_comparison, '_Donor')
+    dds[[collapse_by]] <- paste0(dds[[group_comparison]], '_', dds[['Donor']]) 
+    dds_coll           <- collapseReplicates(dds, dds[[collapse_by]], dds[['Replicate']])
+    dds                <- dds_coll
 }
+
+vsd <- vst(dds)
+dds <- DESeq(dds)
+assays(dds)[['vsd']] <- vsd
+
+
+filestem = basename(file_path_sans_ext(file))
+saveRDS(dds, file=glue('./data/DE_results/{filestem}.Rds'))
+
+lapply(comparisons, function(c) getDE(dds, c, glue('./data/DE_results/{filestem}')))
 
 
 

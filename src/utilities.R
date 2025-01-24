@@ -66,7 +66,7 @@ makeDDS <- function(file, sample_list, design, is_pathogen=T, locus_file=NA) {
     design_values <- lapply(design, function(x) samples_df[[x]])
     design_name   <- paste(design, collapse='_')
     samples_df[design_name] <- Reduce(function(x, y) paste0(x, '_', y), 
-                                      list(design_values))
+                                      design_values)
     
 
     dds <- DESeqDataSetFromMatrix(countData = read_data,

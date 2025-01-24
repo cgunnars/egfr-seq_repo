@@ -49,6 +49,6 @@ dds_filt <- dds[cpm_data_threshold, ]
 
 
 plotQC(dds_filt, glue('{fig_stem}{fig_name}_post'))
-
+saveRDS(dds_filt, file=glue('./data/clean_dds/{fig_name}.Rds'))
 
 

@@ -13,8 +13,10 @@ data/raw_dds/20240502_pel-timecourse-6donor_host.Rds: src/loadData.R data/raw_co
 raw_dds: data/raw_dds/20240808_4h-abx_pathogen.Rds data/raw_dds/20240816_24h-axenic_pathogen.Rds data/raw_dds/20240502_pel-timecourse-6donor_pathogen.Rds data/raw_dds/20240502_pel-timecourse-6donor_host.Rds
 
 
-data/QC_dds/%.Rds: src/runQC.R data/raw_dds/20240808_4h-abx_pathogen.Rds
-	Rscript src/runQC.R -i data/raw_dds/20240808_4h-abx_pathogen.Rds
+data/clean_dds/%.Rds: src/runQC.R data/raw_dds/%.Rds
+	Rscript src/runQC.R -i $(word 2, $^)
+clean_dds: data/clean_dds/20240808_4h-abx_pathogen.Rds data/clean_dds/20240816_24h-axenic_pathogen.Rds data/clean_dds/20240502_pel-timecourse-6donor_pathogen.Rds data/clean_dds/20240502_pel-timecourse-6donor_host.Rds
 
-data/clean_dds/%.Rds: src/runDE.R data/raw_dds/*.Rds data/*_comparisons.txt
-	Rscript src/runDE.R -i data/raw_dds/%.Rds -c data/%_comparisons.txt
+data/DE_results/%.Rds: src/runDE.R data/clean_dds/%.Rds data/comparisons/comparisons_%.txt
+	Rscript src/runDE.R -i $(word 2, $^) -c $(word 3, $^)
+DE_dds: data/DE_results/20240808_4h-abx_pathogen.Rds data/DE_results/20240816_24h-axenic_pathogen.Rds data/DE_results/20240502_pel-timecourse-6donor_pathogen.Rds data/DE_results/20240502_pel-timecourse-6donor_host.Rds
