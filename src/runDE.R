@@ -13,10 +13,17 @@ getDE <- function(dds, comparison, filestem, p_thresh=0.05, fc_thresh=1) {
     results_de   <- results_de[order(results_de$log2FoldChange), ] %>% data.frame
     results_up   <- row.names(results_de[results_de$log2FoldChange > 0, ])
     results_down <- row.names(results_de[results_de$log2FoldChange < 0, ])
-    write.csv(results,       glue('{filestem}_{comparison}_full.csv'))
-    write.csv(results_de,    glue('{filestem}_{comparison}_DE.csv'))
-    writeLines(results_up,   glue('{filestem}_{comparison}_up.txt'))
-    writeLines(results_down, glue('{filestem}_{comparison}_down.txt'))
+    write.csv(results,       glue('./data/DE_results/{filestem}_{comparison}_full.csv'))
+    write.csv(results_de,    glue('./data/DE_results/{filestem}_{comparison}_DE.csv'))
+    writeLines(results_up,   glue('./data/DE_results/{filestem}_{comparison}_up.txt'))
+    writeLines(results_down, glue('./data/DE_results/{filestem}_{comparison}_down.txt'))
+
+    p <- EnhancedVolcano(results, lab=rownames(results), 
+                         x='log2FoldChange', y='pvalue', 
+                         FCcutoff=1, pCutoff=0.05, pCutoffCol='padj',
+                         labSize=5, pointSize=1, 
+                         col=c('grey30', 'grey30', 'grey30', 'red2'))
+    ggsave(plot=p, filename=glue('./fig/DE_results/{filestem}_volcano_{comparison}.pdf'))
 }
 
 source('src/utilities.R')
@@ -49,7 +56,7 @@ assays(dds)[['vsd']] <- vsd
 filestem = basename(file_path_sans_ext(file))
 saveRDS(dds, file=glue('./data/DE_results/{filestem}.Rds'))
 
-lapply(comparisons, function(c) getDE(dds, c, glue('./data/DE_results/{filestem}')))
+lapply(comparisons, function(c) getDE(dds, c, filestem))
 
 
 
