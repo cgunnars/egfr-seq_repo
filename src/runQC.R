@@ -46,7 +46,7 @@ cpm <- assay(dds) / (colSums(assay(dds)) / 1e6)
 cpm_data_threshold = rowSums(cpm > count_threshold, na.rm=T) >= sample_threshold
 
 dds_filt <- dds[cpm_data_threshold, ]
-
+assays(dds_filt)[['vsd']] <- vst(dds_filt)
 
 plotQC(dds_filt, glue('{fig_stem}{fig_name}_post'))
 saveRDS(dds_filt, file=glue('./data/clean_dds/{fig_name}.Rds'))

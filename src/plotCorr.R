@@ -21,8 +21,6 @@ c1          <- args$c
 c2          <- args$d
 
 #print(args$m)
-print(args$c)
-print(args$d)
 
 dds1 <- readRDS(files[[1]])
 dds2 <- readRDS(files[[2]])
@@ -53,30 +51,50 @@ if (length(match_group) > 0) {
 
 vsd1 <- assays(dds1)[['vsd']]
 vsd2 <- assays(dds2)[['vsd']]
-print(head(vsd1))
 
 ## Select DEGs of interest
-basename <- basename(file_path_sans_ext(files[[1]]))
-print(basename)
-de_1 <- lapply(c1, function(x) rownames(read.csv(glue('./data/DE_results/{basename}_{x}_DE.csv'), row.names=1, header=T))) 
-genes_1 <- Reduce(union, de_1)
+basename1 <- basename(file_path_sans_ext(files[[1]]))
+de_1 <- lapply(c1, function(x) read.csv(glue('./data/DE_results/{basename1}_{x}_DE.csv'), row.names=1, header=T))
+de_names1 <- lapply(de_1, function(x) rownames(x))
+genes_1 <- Reduce(union, de_names1)
 
-de_2 <- lapply(c1, function(x) rownames(read.csv(glue('./data/DE_results/{basename}_{x}_DE.csv'), row.names=1, header=T)))
-genes_2 <- Reduce(union, de_1)
-## Read in information about DEGs
-#down_all1 <- lapply(files1, function(x) readtxt(x)) %>% Reduce(union, .)
-#genes_1   <- union(up_all1, down_all1)
+basename2 <- basename(file_path_sans_ext(files[[2]]))
+de_2 <- lapply(c2, function(x) read.csv(glue('./data/DE_results/{basename2}_{x}_DE.csv'), row.names=1, header=T))
+de_names2 <- lapply(de_2, function(x) rownames(x))
+genes_2 <- Reduce(union, de_names2)
 
-#up_all2   <- lapply(files2, function(x) readtxt(x)) %>% Reduce(union, .)
-#down_all2 <- lapply(files2, function(x) readtxt(x)) %>% Reduce(union, .)
-#genes_2   <- union(up_all2, down_all2)
+res <- calc_cor(vsd1[genes_1, ], vsd2[genes_2, ])
 
-print(head(genes_1))
-#print(head(vsd1[genes_1, ]))
-cor <- calc_cor(vsd1[genes_1, ], vsd2[genes_2, ])
-print(max(cor[[1]]))
+rho <- res$rho
+p   <- res$p
+
+write.csv(x=rho, file=glue('./data/corr_results/{basename1}_{basename2}_rho.csv'))
+write.csv(x=p,   file=glue('./data/corr_results/{basename1}_{basename2}_p.csv'))
 
 
+rho_thresh <- threshold_cor(rho, p)
+write.csv(x=rho_thresh, file=glue('./data/corr_results/{basename1}_{basename2}_rho-thresh.csv'))
 
+
+# annotate heatmap according to which genes are degs
+ann1 <- lapply(de_names1, function(x) {as.numeric(colnames(rho_thresh) %in% x)}) %>% as.data.frame()
+colnames(ann1) <- c1
+rownames(ann1) <- colnames(rho_thresh)
+
+ann2 <- lapply(de_names2, function(x) {as.numeric(rownames(rho_thresh) %in% x)}) %>% as.data.frame()
+colnames(ann2) <- c2
+rownames(ann2) <- rownames(rho_thresh)
+
+
+color = colorRampPalette(c("navy", "white", "red"))(5)
+hm <- pheatmap(rho_thresh, annotation_col = ann1, annotation_row = ann2, 
+               breaks = c(-1, -.7, -0.5, 0.5, 0.7, 1), color = color, 
+               legend_breaks=c(-.7, 0, 0.7), legend_labels = c('<-0.7', '0', '>0.7'))
+
+pdf(glue('./fig/corr/{basename1}_{basename2}_rho-thresh.pdf'), 
+    width = ncol(rho_thresh) / 6, height = nrow(rho_thresh) / 6) 
+
+draw(hm)
+dev.off()
 
 

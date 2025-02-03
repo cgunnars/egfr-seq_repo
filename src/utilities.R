@@ -81,6 +81,7 @@ makeDDS <- function(file, sample_list, design, is_pathogen=T, locus_file=NA) {
 
 # input: two scaled matrices
 calc_cor <- function(vsd1, vsd2) {
+    
     rho_cor <- matrix(nrow=nrow(vsd1), ncol(vsd2))
     p_cor   <- matrix(nrow=nrow(vsd1), ncol(vsd2))
 
@@ -95,7 +96,9 @@ calc_cor <- function(vsd1, vsd2) {
                     cor.test(col2, col1)$p.value
                  }, col1=col_mat1)
                })
-    return(list(rho_cor, p_cor))
+    res     <- list(rho_cor, p_cor)
+    names(res) <- c('rho', 'p')
+    return(res)
 }
 
 readtxt <- function(file) {
