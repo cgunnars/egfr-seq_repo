@@ -5,15 +5,29 @@ getDE <- function(dds, comparison, filestem, p_thresh=0.05, fc_thresh=1) {
     comp <- unlist(str_split(comparison, pattern='_vs_'))
     case <- comp[1]
     ref  <- comp[2]
-
+    
+    print(group)
+    dds[[group]] <- relevel(dds[[group]], ref=ref)
+    dds        <- DESeq(dds, quiet=T)
+    ## TODO APEGLM
+    res.ape            <- lfcShrink(dds=dds, coef=glue('{group}_{case}_vs_{ref}'), 
+                                    type='apeglm')#, lfcThreshold=fc_thresh)
+    res.apethresh      <- lfcShrink(dds=dds, coef=glue('{group}_{case}_vs_{ref}'),
+                                    type='apeglm', lfcThreshold=fc_thresh)
+    print(head(res.ape))
+    resLA              <- results(dds, lfcThreshold=fc_thresh, altHypothesis='lessAbs', 
+                                  name=glue('{group}_{case}_vs_{ref}'))
+    res.ape['padj_LA'] <- resLA['padj'] 
+    res.ape['svalue'] <- res.apethresh['svalue']
     #write results tables
     results    <- results(dds, alpha=0.05, contrast=c(group,case,ref))
-    results_de <- results %>% subset(log2FoldChange > fc_thresh | log2FoldChange < -fc_thresh) %>%
-                              subset(padj < p_thresh)
+    results_de <- res.ape %>% subset(log2FoldChange > fc_thresh | log2FoldChange < -fc_thresh) %>%
+                                  subset(padj < p_thresh)
+
     results_de   <- results_de[order(results_de$log2FoldChange), ] %>% data.frame
     results_up   <- row.names(results_de[results_de$log2FoldChange > 0, ])
     results_down <- row.names(results_de[results_de$log2FoldChange < 0, ])
-    write.csv(results,       glue('./data/DE_results/{filestem}_{comparison}_full.csv'))
+    write.csv(res.ape,       glue('./data/DE_results/{filestem}_{comparison}_full.csv'))
     write.csv(results_de,    glue('./data/DE_results/{filestem}_{comparison}_DE.csv'))
     writeLines(results_up,   glue('./data/DE_results/{filestem}_{comparison}_up.txt'))
     writeLines(results_down, glue('./data/DE_results/{filestem}_{comparison}_down.txt'))
