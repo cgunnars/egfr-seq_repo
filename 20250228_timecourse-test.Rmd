@@ -1,0 +1,681 @@
+---
+title: "R Notebook"
+output: html_notebook
+---
+
+# Plot # DEGs relative to previous timepoint
+```{r}
+
+library(glue)
+library(eulerr)
+library(DESeq2)
+library(pheatmap)
+library(ggplot2)
+library(apeglm)
+library(dplyr)
+library(ggridges)
+library(RColorBrewer)
+library(ComplexHeatmap)
+library(circlize)
+library(tidyr)
+library(tibble)
+library(stringr)
+getwd()
+wd = './data/DE_results'
+exp = '20240502_pel-timecourse-6donor_pathogen'
+dds <- readRDS(glue('{wd}/{exp}.Rds'))
+
+getDEGs_time <- function(cond, refs) {
+  up_genes <- lapply(seq(3), 
+                    function(i) {readLines(
+                    file(glue('{wd}/{exp}_{cond}_d{i}_vs_{refs[i]}_up.txt'))
+                   )
+                   }
+                   )
+  names(up_genes) <- lapply(seq(3), function(i) glue('{cond}_d{i}_vs_{refs[i]}'))
+  down_genes <- lapply(seq(3), 
+                        function(i) {readLines(
+                        file(glue('{wd}/{exp}_{cond}_d{i}_vs_{refs[i]}_down.txt'))
+                    )
+                    }
+                    )
+  names(down_genes) = names(up_genes)
+
+  num_up     <- unlist(lapply(up_genes, function(i) length(i)))
+  num_down   <- unlist(lapply(down_genes, function(i) length(i)))
+
+  df <- data.frame(day = seq(3), n_de = num_up, cond = cond, dir = 'up', ref=refs)
+  df <- rbind(df, 
+              data.frame(day = seq(3), n_de = num_down, cond = cond, dir = 'down', ref=refs))
+  return(list(up_genes=up_genes, down_genes=down_genes, df=df))
+}
+
+
+```
+
+```{r, fig.width=6, fig.height=3}
+data_pel <- getDEGs_time(refs = c('phago_4h', 'pel_d1', 'pel_d2'), cond = 'pel')
+data_DMSO <- getDEGs_time(refs = c('phago_4h', 'DMSO_d1', 'DMSO_d2'), cond = 'DMSO')
+data_DMSOvspel <- getDEGs_time(refs = c('DMSO_d1', 'DMSO_d2', 'DMSO_d3'), cond='pel')
+data_DMSOvsphago <- getDEGs_time(refs=c('phago_4h', 'phago_4h', 'phago_4h'), cond='DMSO')
+data_pelvsphago  <- getDEGs_time(refs=c('phago_4h', 'phago_4h', 'phago_4h'), cond='pel')
+all_data <- rbind(data_pel$df, data_DMSO$df)#, data_DMSO)
+
+ggplot(data = all_data, aes(x=day, y=n_de, col=cond)) + geom_line(aes(linetype=dir)) + theme_classic()
+ggplot(data = data_DMSOvspel$df, aes(x=day, y=n_de)) + geom_line(aes(linetype=dir)) + theme_classic()
+
+ggplot(data = rbind(data_DMSOvsphago$df, data_pelvsphago$df), aes(x=day, y=n_de, col=cond)) + geom_line(aes(linetype=dir)) + theme_classic()
+```
+
+```{r, fig.height=8}
+plot(euler(data_DMSOvsphago$up_genes, labels=names(data_DMSOvsphago$up_genes)), 
+     quantities = T)
+plot(euler(data_DMSOvsphago$down_genes, labels=names(data_DMSOvsphago$down_genes)),
+           quantities=T)
+extended_up_DMSO <- Reduce(intersect, data_DMSOvsphago$up_genes)
+extended_down_DMSO <- Reduce(intersect, data_DMSOvsphago$down_genes)
+
+plot(euler(data_pelvsphago$up_genes, labels=names(data_pelvsphago$up_genes)),
+           quantities=T)
+plot(euler(data_pelvsphago$down_genes, labels=names(data_pelvsphago$down_genes)),
+           quantities=T)
+extended_up_pel <- Reduce(intersect, data_pelvsphago$up_genes)
+extended_down_pel <- Reduce(intersect, data_pelvsphago$down_genes)
+
+ext_up_list = list(extended_up_pel=extended_up_pel, 
+                   extended_up_DMSO=extended_up_DMSO)
+plot(euler(ext_up_list, labels=names(ext_up_list)), quantities=T)
+ext_down_list = list(extended_down_pel=extended_down_pel, 
+                     extended_down_DMSO=extended_down_DMSO)
+plot(euler(ext_down_list, labels=names(ext_down_list)), quantities=T)
+
+shared_extup_pelDMSO <- intersect(extended_up_pel, extended_up_DMSO)
+shared_extdown_pelDMSO <- intersect(extended_down_pel, extended_down_DMSO)
+
+up_pelDMSOd1 <- list(DMSO_d1_vs_phago_4h = data_DMSO$up_genes[[1]], 
+                     pel_d1_vs_phago_4h = data_pel$up_genes[[1]],
+                     pel_d1_vs_DMSO_d1 = data_DMSOvspel$up_genes[[1]])
+plot(euler(up_pelDMSOd1, labels=names(up_pelDMSOd1)), quantities=T)
+shared_up_pelDMSOd1 <- Reduce(intersect, up_pelDMSOd1)
+
+down_pelDMSOd1 <- list(DMSO_d1_vs_phago_4h = data_DMSO$down_genes[[1]], 
+                      pel_d1_vs_phago_4h = data_pel$down_genes[[1]],
+                      pel_d1_vs_DMSO_d1 = data_DMSOvspel$down_genes[[1]])
+plot(euler(down_pelDMSOd1, labels=names(down_pelDMSOd1)), quantities=T)
+shared_down_pelDMSOd1 <- Reduce(intersect, down_pelDMSOd1)
+
+
+up_pelDMSOd2 <- list(DMSO_d2_vs_phago_4h = data_DMSO$up_genes[[2]], 
+                     pel_d2_vs_phago_4h = data_pel$up_genes[[2]],
+                     pel_d2_vs_DMSO_d2 = data_DMSOvspel$up_genes[[2]])
+plot(euler(up_pelDMSOd2, labels=names(up_pelDMSOd2)), quantities=T)
+shared_up_pelDMSOd2 <- Reduce(intersect, up_pelDMSOd2)
+
+down_pelDMSOd2 <- list(DMSO_d2_vs_phago_4h = data_DMSO$down_genes[[2]], 
+                      pel_d2_vs_phago_4h = data_pel$down_genes[[2]],
+                      pel_d2_vs_DMSO_d2 = data_DMSOvspel$down_genes[[2]])
+plot(euler(down_pelDMSOd2, labels=names(down_pelDMSOd2)), quantities=T)
+shared_down_pelDMSOd2 <- Reduce(intersect, down_pelDMSOd2)
+
+up_pelDMSOd3 <- list(DMSO_d3_vs_phago_4h = data_DMSO$up_genes[[3]], 
+                     pel_d3_vs_phago_4h = data_pel$up_genes[[3]],
+                     pel_d3_vs_DMSO_d3 = data_DMSOvspel$up_genes[[3]])
+plot(euler(up_pelDMSOd3, labels=names(up_pelDMSOd3)), quantities=T)
+shared_up_pelDMSOd3 <- Reduce(intersect, up_pelDMSOd3)
+
+down_pelDMSOd3 <- list(DMSO_d3_vs_phago_4h = data_DMSO$down_genes[[3]], 
+                      pel_d3_vs_phago_4h = data_pel$down_genes[[3]],
+                      pel_d3_vs_DMSO_d3 = data_DMSOvspel$down_genes[[3]])
+plot(euler(down_pelDMSOd3, labels=names(down_pelDMSOd3)), quantities=T)
+shared_down_pelDMSOd3 <- Reduce(intersect, down_pelDMSOd3)
+
+
+
+```
+
+```{r}
+unique_ext_up_pel  <- extended_up_pel[!extended_up_pel %in% extended_up_DMSO]
+unique_ext_up_DMSO <- extended_up_DMSO[!extended_up_DMSO %in% extended_up_pel]
+unique_ext_down_pel  <- extended_down_pel[!extended_down_pel %in% extended_down_DMSO]
+unique_ext_down_DMSO <- extended_down_DMSO[!extended_down_DMSO %in% extended_down_pel]
+```
+
+```{r}
+vsd <- assays(dds)[['vsd']]
+```
+
+```{r, fig.height=10, fig.width=8}
+pheatmap(t(scale(t(assay(vsd[union(extended_up_pel, extended_up_DMSO), vsd$Drug %in% c('DMSO', 'pel', 'phago')])))), cluster_cols = F)
+pheatmap(t(scale(t(assay(vsd[union(extended_down_pel, extended_down_DMSO), vsd$Drug %in% c('DMSO', 'pel', 'phago')])))), cluster_cols = F)
+
+
+
+pheatmap(t(scale(t(assay(vsd[unique_ext_up_pel, vsd$Drug %in% c('DMSO', 'pel', 'phago')])))), cluster_cols = F)
+pheatmap(t(scale(t(assay(vsd[unique_ext_up_DMSO, vsd$Drug %in% c('DMSO', 'pel', 'phago')])))), cluster_cols = F)
+
+pheatmap(t(scale(t(assay(vsd[unique_ext_down_pel, vsd$Drug %in% c('DMSO', 'pel', 'phago')])))), cluster_cols = F)
+pheatmap(t(scale(t(assay(vsd[unique_ext_down_DMSO, vsd$Drug %in% c('DMSO', 'pel', 'phago')])))), cluster_cols = F)
+
+```
+
+```{r, fig.height=30, fig.width=5}
+pheatmap(t(scale(t(assay(vsd[Reduce(union, data_DMSOvsphago$up_genes), 
+                             vsd$Drug %in% c('DMSO', 'phago')])))), cluster_cols=F)
+
+pheatmap(t(scale(t(assay(vsd[Reduce(union, data_pelvsphago$up_genes), 
+                             vsd$Drug %in% c('pel', 'phago')])))), cluster_cols=F)
+```
+
+```{r, fig.height=35, fig.width=6}
+ann_row = lapply (up_pelDMSOd1, 
+                 function(i) 
+                 as.numeric(Reduce(union, c(up_pelDMSOd1, down_pelDMSOd1)) %in% i) ) %>% as.data.frame()
+colnames(ann_row) <- names(up_pelDMSOd1) 
+rownames(ann_row) <- Reduce(union, c(up_pelDMSOd1, down_pelDMSOd1))
+ann_row <- ann_row[Reduce(union, up_pelDMSOd1), ]
+
+pheatmap(t(scale(t(assay(vsd[Reduce(union, up_pelDMSOd1), 
+                         vsd$Drug_Day %in% c('DMSO_d1', 'pel_d1', 'phago_4h')]
+         )))), 
+         cluster_cols = F, annotation_row=ann_row)
+
+
+ann_row2 = lapply(down_pelDMSOd1, 
+                 function(i)  
+                 as.numeric(Reduce(union, c(up_pelDMSOd1, down_pelDMSOd1)) %in% i) ) %>% as.data.frame()
+colnames(ann_row2) <- names(down_pelDMSOd1) 
+rownames(ann_row2) <- Reduce(union, c(up_pelDMSOd1, down_pelDMSOd1))
+ann_row2 <- ann_row2[Reduce(union, down_pelDMSOd1), ]
+
+pheatmap(t(scale(t(assay(vsd[Reduce(union, down_pelDMSOd1), 
+                         vsd$Drug_Day %in% c('DMSO_d1', 'pel_d1', 'phago_4h')]
+         )))), 
+         cluster_cols = F, annotation_row=ann_row2)
+
+```
+```{r}
+fc_thresh = c(0.3, 0.5, 0.7, 0.8, 0.9, 1)
+coef =  'Drug_Day_pel_d1_vs_DMSO_d1' #'Drug_pel_vs_DMSO'
+resape <- lapply(fc_thresh, function (i) 
+                 lfcShrink(dds = dds, coef = coef, 
+                           type='apeglm', lfcThreshold = i) %>% 
+                 subset(svalue < 0.005))
+resLA  <- lapply(fc_thresh, function(i)
+                 results(dds, lfcThreshold = i, 
+                         altHypothesis = 'lessAbs', 
+                         name = coef) %>% 
+                 subset(padj < 0.05))
+resGA  <- lapply(fc_thresh, function(i)
+                 results(dds, lfcThreshold = i, 
+                         altHypothesis = 'greaterAbs', 
+                         name = coef) %>% 
+                 subset(padj < 0.05))
+res    <- lapply(fc_thresh, function(i)
+                results(dds, name = coef) %>% 
+                subset(padj < 0.05) %>% 
+                subset(log2FoldChange > i | log2FoldChange < -i))
+resshr <- lapply(fc_thresh, function (i) 
+                 lfcShrink(dds = dds, coef = coef, 
+                           type='apeglm') %>% 
+                subset(padj < 0.05) %>% 
+                subset(log2FoldChange > i | log2FoldChange < -i))
+
+nape   <- unlist(lapply(resape, function(i) dim(i)[[1]]))
+nLA    <- unlist(lapply(resLA,  function(i) dim(i)[[1]]))
+nGA    <- unlist(lapply(resGA,  function(i) dim(i)[[1]]))
+nreg   <- unlist(lapply(res,    function(i) dim(i)[[1]]))
+nshr   <- unlist(lapply(resshr, function(i) dim(i)[[1]]))
+```
+
+```{r}
+nde_df <- do.call('rbind', list(
+                  data.frame(fc_thresh=fc_thresh, n=nape, method='apeGLM, above thresh'),
+                  data.frame(fc_thresh=fc_thresh, n=nreg, method='unadj, above thresh'),
+                  data.frame(fc_thresh=fc_thresh, n=nshr, method='shrink, above thresh'),
+                  data.frame(fc_thresh=fc_thresh, n=nGA,  method='Wald, above thresh')))
+
+ggplot(data=nde_df, aes(x=fc_thresh, y=n, col=method)) + geom_line() + theme_classic()
+
+ggplot(data = data.frame(fc_thresh=fc_thresh, n=nLA, method='Wald, below thresh'),
+       aes(x=fc_thresh, y=n, col=method)) + geom_line() + theme_classic()
+```
+
+```{r}
+ngenes <- dim(dds)[1]
+unspec <- ngenes - (nshr + nLA)
+nunspec <- do.call('rbind', list(
+                  data.frame(fc_thresh=fc_thresh, n=nshr, method='shrink, above thresh'),
+                  data.frame(fc_thresh=fc_thresh, n=nLA, method='Wald, below thresh'),
+                  data.frame(fc_thresh=fc_thresh, n=unspec, method='unspecified')))
+nunspec$method <- factor(nunspec$method , levels=c('unspecified', 'shrink, above thresh', 'Wald, below thresh') )
+ggplot(data = nunspec,
+       aes(x=fc_thresh, y=n, fill=method)) + geom_area(alpha=0.6) + theme_classic()
+
+```
+
+```{r, fig.width=10}
+allgenes <- rownames(dds)
+resallshr <- lfcShrink(dds = dds, coef = coef, type='apeglm')
+unspec_genes <- lapply(seq(length(resshr)), function(i) {allgenes[!allgenes %in% union(rownames(resshr[[i]]), rownames(resLA[[i]]))]})
+
+unspec_df    <- lapply(seq(length(unspec_genes)), function(i) {
+                  do.call('rbind', list(
+                        data.frame(fc_thresh=fc_thresh[i],
+                             category='unspecified',
+                             baseMean=resallshr[unspec_genes[[i]], 'baseMean'],
+                             log2FoldChange=abs(resallshr[unspec_genes[[i]], 'log2FoldChange']),
+                             padj=resallshr[unspec_genes[[i]], 'padj']),
+                        data.frame(fc_thresh=fc_thresh[i],
+                             category='shrink, above thresh',
+                             baseMean=resshr[[i]][, 'baseMean'],
+                             log2FoldChange=abs(resshr[[i]][, 'log2FoldChange']),
+                             padj=resshr[[i]][, 'padj']),
+                        data.frame(fc_thresh=fc_thresh[i],
+                             category='Wald, below thresh',
+                             baseMean=resLA[[i]][, 'baseMean'],
+                             log2FoldChange=abs(resLA[[i]][, 'log2FoldChange']),
+                             padj=resLA[[i]][, 'padj'])
+                        )
+                        )
+                })
+unspec_dfbind <- do.call('rbind', unspec_df)
+unspec_dfbind$fc_thresh <- factor(unspec_dfbind$fc_thresh)
+unspec_dfbind$category <- factor(unspec_dfbind$category, levels=c('unspecified', 'shrink, above thresh', 'Wald, below thresh'))
+lines = data.frame(n=seq(length(unspec_genes)), fc_thresh=fc_thresh, fc=fc_thresh)
+
+ggplot(data = unspec_dfbind, aes(x=fc_thresh, y=baseMean, fill=category)) + scale_y_log10() +
+  geom_violin(position = position_dodge(0.5), alpha=0.4, scale = "width") +
+  geom_point(alpha=0.7, size=0.2, position = position_jitterdodge(jitter.width=0.4, dodge.width = 0.5), aes(col=category)) + 
+  geom_boxplot(width=0.1, position = position_dodge(0.5), alpha=0.4, outlier.shape = NA) + 
+  theme_classic()
+
+ggplot(data = unspec_dfbind, aes(x=fc_thresh, y=log2FoldChange, fill=category)) + 
+  geom_violin(position = position_dodge(0.5), alpha=0.4, scale = "width") +
+  geom_point(alpha=0.7, size=0.2, position = position_jitterdodge(jitter.width=0.4, dodge.width = 0.5), aes(col=category)) + 
+  geom_boxplot(width=0.1, position = position_dodge(0.5), alpha=0.4, outlier.shape = NA) + 
+  theme_classic()
+```
+
+```{r, fig.width=16, fig.height=4}
+p <- ggplot(unspec_dfbind, aes(x=baseMean, y=log2FoldChange, col=category)) + 
+     geom_point(alpha=0.3, size=0.5) + scale_x_log10() + geom_abline(data=lines, aes(intercept=fc, slope=0))
+
+# Use vars() to supply variables from the dataset:
+p + facet_grid(cols = vars(fc_thresh)) + theme_classic()
+
+```
+
+```{r}
+
+exp_abx = '20240816_24h-axenic_pathogen'
+dds_abx <- readRDS(glue('{wd}/{exp_abx}.Rds'))
+coef_abx <- 'Drug_pel_vs_DMSO'
+res_intra         <- lfcShrink(dds = dds, coef = coef, type='apeglm')
+res_intra$DEintra <- (abs(res_intra[, 'log2FoldChange']) > 1 & res_intra[, 'padj'] < 0.05)
+res_intra$DEintra[is.na(res_intra$DEintra)] <- F 
+res_intra$notDEintra   <- (results(dds, lfcThreshold = 0.7, 
+                             altHypothesis = 'lessAbs', 
+                             name = coef)[, 'padj']  < 0.05) 
+res_intra$notDEintra[is.na(res_intra$notDEintra)] <- F
+
+res_axenic <- lfcShrink(dds = dds_abx, coef = coef_abx, type='apeglm')
+res_axenic$DEaxenic <- abs(res_axenic[, 'log2FoldChange']) > 1 & 
+                       res_axenic[, 'padj'] < 0.05
+res_axenic$DEaxenic[is.na(res_axenic$DEaxenic)] <- F
+res_axenic$notDEaxenic <- results(dds_abx, lfcThreshold = 0.7, 
+                                  altHypothesis = 'lessAbs', 
+                                  name = coef_abx)[, 'padj'] < 0.05
+res_axenic$notDEaxenic[is.na(res_axenic$notDEaxenic)] <- F
+combined_genes <- intersect(rownames(res_axenic), rownames(res_intra)) 
+
+
+combined <- cbind(res_intra[combined_genes, 
+                            c('log2FoldChange', 'DEintra', 'notDEintra')], 
+                  res_axenic[combined_genes,
+                             c('log2FoldChange', 'DEaxenic', 'notDEaxenic')])
+colnames(combined) <- c('FC_intra', 'DE_intra', 'notDE_intra', 'FC_axenic', 'DE_axenic', 'notDE_axenic')
+
+combined$category <- 'mixed evidence'
+combined[combined$DE_intra & !combined$notDE_axenic, 'category'] <- 'DE, axenic effect not excluded'
+combined[combined$DE_intra & combined$notDE_axenic, 'category'] <- 'DE, unlikely axenic effect'                          
+combined[combined$DE_axenic & combined$notDE_intra, 'category'] <- 'axenic DE, unlikely intracellular effect'
+combined[combined$DE_axenic & !combined$notDE_intra, 'category'] <- 'axenic DE, intracellular effect not excluded'
+combined[combined$DE_intra & combined$DE_axenic, 'category'] <- 'axenic effect'
+combined[combined$notDE_axenic & combined$notDE_intra, 'category'] <- 'low change'
+
+ggplot(data=combined, aes(x=FC_axenic, y=FC_intra, col=DE_intra)) + 
+  geom_point(alpha=0.5, aes(shape=notDE_axenic)) + 
+  geom_hline(yintercept=0.7, linetype='dashed') + 
+  geom_vline(xintercept=0.7, linetype='dashed') + 
+  geom_hline(yintercept=-0.7, linetype='dashed') + 
+  geom_vline(xintercept=-0.7, linetype='dashed') + theme_classic()
+
+combined$DE_axenic <- factor(combined$DE_axenic, levels=c(T, F))
+ggplot(data=combined, aes(x=FC_axenic, y=FC_intra, col=DE_intra)) + 
+  geom_point(alpha=0.5, aes(shape=DE_axenic)) +
+  geom_hline(yintercept=0.7, linetype='dashed') + 
+  geom_vline(xintercept=0.7, linetype='dashed') + 
+  geom_hline(yintercept=-0.7, linetype='dashed') + 
+  geom_vline(xintercept=-0.7, linetype='dashed') + theme_classic()
+
+ggplot(data=combined, aes(x=FC_axenic, y=FC_intra, col=category)) + geom_point(alpha=0.5) +
+  geom_hline(yintercept=0.7, linetype='dashed') + 
+  geom_vline(xintercept=0.7, linetype='dashed') + 
+  geom_hline(yintercept=-0.7, linetype='dashed') + 
+  geom_vline(xintercept=-0.7, linetype='dashed') + theme_classic()
+```
+
+```{r}
+DEintra_bycat <- list(rownames(combined[combined$DE_intra & combined$notDE_axenic, ]),
+                      rownames(combined[combined$DE_intra & !combined$DE_axenic, ]),
+                      rownames(combined[combined$DE_intra & combined$DE_axenic, ]))
+names(DEintra_bycat) <- c('DE, unlikely axenic effect', 'DE, not axenic DE', 'DE, axenic effect')
+plot(euler(DEintra_bycat, labels=names(DEintra_bycat)), quantities=T)
+```
+
+```{r}
+
+ggplot(combined, aes(x = FC_intra, y = category, fill = category)) +
+  geom_density_ridges(stat="binline") +
+  theme_ridges() + 
+  theme(legend.position = "none")
+
+
+ggplot(combined, aes(x = FC_axenic, y = category, fill = category)) +
+  geom_density_ridges(stat="binline") +
+  theme_ridges() + 
+  theme(legend.position = "none")
+
+
+ggplot(combined, aes(x = abs(FC_axenic), y = DE_intra, fill = notDE_axenic)) +
+  geom_density_ridges(stat="binline", alpha=0.5) +
+  theme_ridges() + 
+  theme(legend.position = "none")
+
+ggplot(combined, aes(x = abs(FC_axenic), y = DE_intra, fill = DE_axenic)) +
+  geom_density_ridges(stat="binline", alpha=0.5) +
+  theme_ridges() + 
+  theme(legend.position = "none")
+
+
+ggplot(combined, aes(x = (FC_axenic), y = DE_intra, fill = notDE_axenic)) +
+  geom_density_ridges(stat="binline", alpha=0.5) +
+  theme_ridges() + 
+  theme(legend.position = "none")
+
+ggplot(combined, aes(x = (FC_axenic), y = DE_intra, fill = DE_axenic)) +
+  geom_density_ridges(stat="binline", alpha=0.5) +
+  theme_ridges() + 
+  theme(legend.position = "none")
+```
+
+```{r, fig.height=10, fig.width=8}
+vsd_pathogen <- assays(dds)[['vsd']]
+conditions <- c('pel_d1','DMSO_d1', 'phago_4h')
+degs <- rownames(combined[combined$DE_intra, ]) 
+expr_mat <- t(scale(t(assay(vsd_pathogen))))
+
+ann_colors = list(fc_axenic=colorRampPalette(
+                                rev(brewer.pal(n=8, name="RdYlBu")))(10))
+
+annotation_row <- data.frame(category=combined[degs, 'category'], 
+                             fc_axenic=(combined[degs, 'FC_axenic']), row.names=degs)
+col_fun = colorRamp2(c(-2, 0, 2), c("blue", "white", "red"))
+
+col = list(fc_axenic = col_fun,
+           category = hue_pal()(3))
+names(col$category) <- c('DE, unlikely axenic effect', 'DE, axenic effect not excluded', 'axenic effect')
+Heatmap(expr_mat[degs, vsd_pathogen$Drug_Day %in% conditions], column_split=vsd_pathogen$Drug_Day[vsd_pathogen$Drug_Day %in% conditions],
+        name='row z(vsd)', left_annotation = rowAnnotation(df = annotation_row, col=col))# annotation_row=annotation_row, annotation_colors = ann_colors)
+```
+
+```{r, fig.width=10}
+sigma = c('sigA', 'sigB', 'sigC', 'sigD', 'sigE', 'sigF', 'sigG', 'sigH', 'sigK')
+Heatmap(expr_mat[sigma, vsd_pathogen$Drug_Day %in% conditions],
+        name='row z(vsd)')
+```
+```{r}
+genedf <- assay(vsd_pathogen) %>% data.frame() %>% rownames_to_column(var='row') %>% 
+           pivot_longer(., cols=-row) %>% data.frame()
+
+meta <-   str_split_fixed(genedf$name, pattern='_', 3) %>% data.frame()
+colnames(meta) <- c('Drug', 'Day', 'Donor')
+
+
+genedf$Drug <- meta$Drug
+genedf$Drug <- factor(genedf$Drug, levels=c('pel', 'DMSO', 'sara', 'gef', 'phago', 'tb'))
+genedf$Day  <- meta$Day
+genedf$Donor <- meta$Donor
+genedf$Drug_Donor <- paste(meta$Drug, meta$Donor, sep='_')
+genedf$Donor_Day  <- as.factor(paste(meta$Donor, meta$Day, sep='_'))
+
+```
+
+```{r, fig.height=25, fig.width=25}
+
+conditions = c('pel', 'DMSO', 'phago', 'tb')
+all_conditions = c('pel', 'sara', 'gef', 'DMSO', 'phago', 'tb')
+p <- ggplot(data=genedf[genedf$row %in% degs & genedf$Drug %in% conditions, ], 
+       aes(x=Day, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0)) + 
+       geom_point(position=position_dodge(0)) + 
+       geom_line(aes(group = Drug_Donor), position=position_dodge(0)) + 
+       theme_classic()
+p + facet_wrap(vars(row))
+
+p2 <- ggplot(data=genedf[genedf$row %in% degs & genedf$Drug %in% conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+p2 + facet_wrap(vars(row))
+```
+```{r, fig.width=10}
+sigma <- c('sigA', 'sigB', 'sigC', 'sigD', 'sigE', 'sigF', 'sigH', 'sigK', 'sigL')
+psigma <- ggplot(data=genedf[genedf$row %in% sigma & genedf$Drug %in% conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+psigma + facet_grid(col=vars(row))
+
+
+sigma <- c('sigA', 'sigB', 'sigC', 'sigD', 'sigE', 'sigF', 'sigH', 'sigK', 'sigL')
+psigma <- ggplot(data=genedf[genedf$row %in% sigma & genedf$Drug %in% all_conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       #geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+psigma + facet_grid(col=vars(row))
+```
+
+```{r, fig.width=15}
+tcs <- c('mprA', 'mprB', 'kdpD', 'kdpE', 'tcrX', 'tcrY', 'mtrA', 'mtrB', 
+         'phoP', 'phoR', 'devR', 'devS', 'dosT', 'senX3', 'regX3', 
+         'prrA', 'prrB', 'pdtaR', 'pdtaS', 'trcR', 'trcS', 'narS', 'narL')
+ptcs <- ggplot(data=genedf[genedf$row %in% tcs & genedf$Drug %in% conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+ptcs + facet_grid(col=vars(row))
+
+
+ptcs <- ggplot(data=genedf[genedf$row %in% tcs & genedf$Drug %in% all_conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       #geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+ptcs + facet_grid(col=vars(row))
+```
+
+```{r}
+metal <- c('ctpC', 'Rv3269', 'mymT', 'cmtR', 'cadI')
+pmetal <- ggplot(data=genedf[genedf$row %in% metal & genedf$Drug %in% conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+pmetal + facet_grid(col=vars(row))
+
+
+pmetal <- ggplot(data=genedf[genedf$row %in% metal & genedf$Drug %in% all_conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+pmetal + facet_grid(col=vars(row))
+```
+
+```{r}
+ptcs <- ggplot(data=genedf[genedf$row %in% c('Rv1405c', 'Rv1403c', 'Rv2390c', 'Rv0575c', 'rpfD', 'kdpA', 'kdpB', 'kdpC') & genedf$Drug %in% all_conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+ptcs + facet_grid(col=vars(row))
+
+```
+
+```{r, fig.width=13}
+sigEreg <- c('mprA', 'mprB', 'sigB', 'sigE', '35kd_ag', 'clgR', 'hsp', 'icl1',
+          'fadB2', 'Rv0465c', 'dinG', 'Rv0516c', 'htpX', 'pepD', 'moaB2', 'Rv1057', 
+          'Rv1129c', 'prpD', 'prpC', 'Rv2743c', 'Rv2742c', 'fadE23', 'fadE24')
+ptcr <- ggplot(data=genedf[genedf$row %in% sigEreg & genedf$Drug %in% conditions & genedf$Day == 'd1', ], 
+       aes(x=Drug, y=value, col=Drug)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+ptcr + facet_grid(col=vars(row))
+
+```
+
+```{r}
+library(clusterProfiler)
+library(enrichplot)
+gsea_genelist2 <- combined$FC_axenic
+names(gsea_genelist2) <- rownames(combined)
+gsea_genelist2 <- sort(gsea_genelist2, decreasing = T)
+
+regulon_sige <- data.frame(term='sigE', gene_list=sigEreg)
+gsea_results2 <- GSEA(geneList = gsea_genelist2, TERM2GENE = regulon_sige, verbose = F, eps=1e-10, minGSSize = 1, pvalueCutoff = 1)
+gseaplot(gsea_results2, geneSetID = 1, by = "runningScore", title = gsea_results$Description[1])
+
+
+```
+
+```{r}
+## need to convert back to rv number for this 
+source('./src/utilities.R')
+locus_df <- loadLocus('./data/gene_info/H37Rv_gene-lengths.csv')
+sel_regulon <- read.gmt("./data/source_data/selected_regulon.gmt")
+rv_map <- locus_df %>% data.frame(row.names='Name', Rv=rownames(locus_df))
+gsea_rvlist <- rv_map[names(gsea_genelist), 'Rv']
+names(gsea_genelist) <- gsea_rvlist
+
+gsea_results_sel <- GSEA(geneList = gsea_genelist, TERM2GENE = sel_regulon, verbose = F, eps=1e-10, minGSSize = 1, pvalueCutoff = 1)
+
+
+gsea_results_sel@result$ID
+gsea_results_sel@result$p.adjust
+gsea_results_sel@result$NES
+
+
+gsea_results_sel@result$ID[gsea_results_sel@result$p.adjust < 0.05]
+gsea_results_sel@result[gsea_results_sel@result$p.adjust < 0.05, c('ID', 'NES')]
+```
+
+```{r, fig.width=10}
+imod_genelist <- read.csv('./data/source_data/imodulon_data/gene_presence_list.csv', row.names=1)
+imod_table <- read.csv('./data/source_data/imodulon_data/iM_table.csv', row.names=1)
+colnames(imod_genelist) <- c('term', 'gene')
+
+gsea_results_imod <- GSEA(geneList = gsea_genelist, TERM2GENE = imod_genelist, verbose = F, eps=1e-10, minGSSize = 1, pvalueCutoff = 1)
+
+imod_names <- imod_table[gsea_results_imod@result$ID, 'name']
+gsea_results_imod@result$Description <- imod_names
+
+
+siggsea_df <- gsea_results_imod@result[gsea_results_imod@result$p.adjust < 0.05, c('ID', 'p.adjust', 'NES', 'Description', 'setSize')]
+
+inds_to_plot <- which(gsea_results_imod@result$p.adjust < 0.05)
+for (i in inds_to_plot){
+  p <- gseaplot(gsea_results_imod, geneSetID = i, by = "runningScore", title=gsea_results_imod@result$Description[i])
+  print(p)
+}
+
+core_genes_gsea <- lapply(inds_to_plot,
+                          function(i) {
+                            locus_df[unlist(str_split(gsea_results_imod@result$core_enrichment[i], 
+                                            pattern = '/')), 'Name']})
+names(core_genes_gsea) <- gsea_results_imod@result$Description[inds_to_plot]
+siggsea_df$Count <- unlist(lapply(core_genes_gsea, function(i) length(i)))
+siggsea_df$ratio <- siggsea_df$Count / siggsea_df$setSize
+for (gene_set in core_genes_gsea) {
+      pgsea <- ggplot(data=genedf[genedf$row %in% gene_set & genedf$Drug %in% conditions & genedf$Day == 'd1', ], 
+        aes(x=Drug, y=value, col=Drug)) + 
+        geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+        geom_point(position=position_dodge(0.5)) + 
+        geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+        theme_classic()
+      print(pgsea + facet_grid(col=vars(row)) + ggtitle(names(gene_set)))
+      
+}
+
+
+dotplot(gsea_results_imod)
+```
+
+
+```{r}
+
+siggsea_df <- siggsea_df[order(siggsea_df$p.adjust, decreasing=T), ]
+siggsea_df$Description <- factor(siggsea_df$Description, levels=siggsea_df$Description)
+
+ggplot(siggsea_df, aes(x = -log10(p.adjust), y = Description, size = -log10(p.adjust), color = NES)) + 
+  scale_color_steps2(limits=c(-2.5, 2.5), n.breaks=6, 
+                     low = muted("blue"),
+                     mid = "white",
+                     high = muted("red")) + 
+  geom_point(stat = 'identity') + 
+  xlab("-log10(p.adjust)") + ylab("iModulon")  + 
+  theme_classic()
+```
+
+```{r}
+
+wd = './data/DE_results'
+exp = '20240808_4h-abx_pathogen'
+dds_abx4h <- readRDS(glue('{wd}/{exp}.Rds'))
+vsd_4h <- assays(dds_abx4h)[['vsd']]
+genedf_4h <- assay(vsd_4h) %>% data.frame() %>% rownames_to_column(var='row') %>% 
+           pivot_longer(., cols=-row) %>% data.frame()
+
+meta <-   str_split_fixed(genedf_4h$name, pattern='_', 3) %>% data.frame()
+colnames(meta) <- c('Drug', 'Dose', 'ID')
+
+
+genedf_4h$Drug <- meta$Drug
+genedf_4h$Dose <- meta$Dose
+genedf_4h$Drug_Dose <- as.factor(paste(meta$Drug, meta$Dose, sep='_'))
+```
+
+```{r, fig.width=25}
+plot_genes <- c('ctpC', 'Rv3269c', 'cadI', 'mymT', 'cmtR')
+p4h <- ggplot(data=genedf_4h[genedf_4h$row %in% plot_genes, ], 
+       aes(x=Drug_Dose, y=value, col=Dose)) + 
+       geom_boxplot(width=0.1, position=position_dodge(0.5)) + 
+       geom_point(position=position_dodge(0.5)) + 
+       #geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
+       theme_classic()
+p4h + facet_grid(col=vars(row))
+```
