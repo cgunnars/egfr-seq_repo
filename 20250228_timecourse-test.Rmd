@@ -330,10 +330,11 @@ combined_genes <- intersect(rownames(res_axenic), rownames(res_intra))
 
 
 combined <- cbind(res_intra[combined_genes, 
-                            c('log2FoldChange', 'DEintra', 'notDEintra')], 
+                            c('log2FoldChange', 'DEintra', 'notDEintra', 'baseMean')], 
                   res_axenic[combined_genes,
-                             c('log2FoldChange', 'DEaxenic', 'notDEaxenic')])
-colnames(combined) <- c('FC_intra', 'DE_intra', 'notDE_intra', 'FC_axenic', 'DE_axenic', 'notDE_axenic')
+                             c('log2FoldChange', 'DEaxenic', 'notDEaxenic', 'baseMean')])
+colnames(combined) <- c('FC_intra', 'DE_intra', 'notDE_intra', 'baseMean_intra', 
+                        'FC_axenic', 'DE_axenic', 'notDE_axenic', 'baseMean_axenic')
 
 combined$category <- 'mixed evidence'
 combined[combined$DE_intra & !combined$notDE_axenic, 'category'] <- 'DE, axenic effect not excluded'
@@ -407,6 +408,26 @@ ggplot(combined, aes(x = (FC_axenic), y = DE_intra, fill = DE_axenic)) +
   geom_density_ridges(stat="binline", alpha=0.5) +
   theme_ridges() + 
   theme(legend.position = "none")
+```
+
+```{r}
+combined$baseMean_diff <- log10(combined$baseMean_intra) - log10(combined$baseMean_axenic)
+combined$scaledbaseMean_diff <- scale(combined$baseMean_diff)
+
+ggplot(combined, aes(x=baseMean_axenic, y=baseMean_intra, 
+                     col=abs(scale(baseMean_diff)) > 2)) +
+geom_point() + scale_x_log10() + scale_y_log10()
+
+log10(combined[, 'baseMean_intra']) / log10(combined[, 'baseMean_axenic'])
+
+ggplot(combined, aes(x=scale(baseMean_diff))) + geom_histogram()
+ggplot(combined, aes(x=baseMean_diff)) + geom_histogram()
+
+sum(abs(scale(combined$baseMean_diff)) > 2)
+
+
+
+rownames(combined[(abs(scale(combined$baseMean_diff)) > 2),])
 ```
 
 ```{r, fig.height=10, fig.width=8}
@@ -678,4 +699,114 @@ p4h <- ggplot(data=genedf_4h[genedf_4h$row %in% plot_genes, ],
        #geom_line(aes(group=interaction(Donor, Day)), col='black', position=position_dodge(0)) + 
        theme_classic()
 p4h + facet_grid(col=vars(row))
+```
+
+```{r, fig.height=5}
+plotPCA(vsd_4h, intgroup=c('Drug', 'Dose')) + theme_classic()
+```
+
+```{r}
+results_lap <- results(dds_abx4h, contrast=c('Drug_Dose', 'pel_25', 'pel_5')) 
+
+lap_genelist <- results_lap$log2FoldChange
+names(lap_genelist) <- rownames(results_lap)
+lap_genelist <- sort(lap_genelist, decreasing=T)
+
+lap_rvlist <- rv_map[names(lap_genelist), 'Rv']
+names(lap_genelist) <- lap_rvlist
+
+
+lap_gsea_imod <- GSEA(geneList = lap_genelist, TERM2GENE = imod_genelist, verbose = F, eps=1e-10, minGSSize = 1, pvalueCutoff = 1)
+lap_gsea_imod@result$Description <- imod_table[lap_gsea_imod@result$ID, 'name']
+lap_gsea_df <- lap_gsea_imod@result[lap_gsea_imod@result$p.adjust < 0.05, c('ID', 'p.adjust', 'NES', 'Description', 'setSize')]
+lap_gsea_df <- lap_gsea_df[order(lap_gsea_df$p.adjust, decreasing=T), ]
+
+
+lap_gsea_df$Description <- factor(lap_gsea_df$Description, levels=lap_gsea_df$Description)
+ggplot(lap_gsea_df, aes(x = -log10(p.adjust), y = Description, size = -log10(p.adjust), color = NES)) + 
+  scale_color_steps2(limits=c(-2.5, 2.5), n.breaks=6, 
+                     low = muted("blue"),
+                     mid = "white",
+                     high = muted("red")) + 
+  geom_point(stat = 'identity') + 
+  xlab("-log10(p.adjust)") + ylab("iModulon")  + 
+  theme_classic()
+
+
+inh_sig <- data.frame(term='INH_UP', 
+                      gene=c('iniB','iniC', 'accD6', 'acpM', 'fabD', 
+                             'kasA', 'kasB', 'Rv1592c', 'iniA', 'efpA'))
+inh_sig_down <- data.frame(term='INH_DOWN', 
+                           gene=c('Rv0950c', 'fbpB', 'Rv0516c', 'Rv1885c', 
+                                  'Rv2190c', 'desA2', 'Rv2189c', 'desA1', 
+                                  'rpfE', 'Rv0263c'))
+bdq_sig <- data.frame(term='BDQ_UP', 
+                      gene=c('hsp', 'sigB', 'cydB', 'Rv1461', 'Rv1462', 
+                             'Rv1463', 'cydD', 'bkdB', 'csd', 'cysD'))
+bdq_sig_down <- data.frame(term='BDQ_DOWN', 
+                           gene=c('Rv3922c', 'Rv3921c', 'hadC', 'trpA', 
+                                  'Rv2949c', 'rnpA', 'rpsH', 'rplE', 'Rv3920c',
+                                  'hadA'))
+pyr_sig <- data.frame(term='PYR_UP',
+                      gene=c('Rv3173c', 'Rv3531c', 'Rv1460', 'Rv0004', 
+                             'cyp138', 'Rv0791c', 'clpB', 'hsp', 'Rv0792c', 
+                             'Rv0790c'))
+pyr_sig_down <- data.frame(term='PYR_DOWN', 
+                           gene=c('esxM', 'pks11', 'Rv0531', 'ahpD', 'Rv2971', 
+                                  'Rv1928c', 'cysA3', 'Rv0794c', 'trxC', 'kshB'))
+clof_sig <- data.frame(term='CLOF_UP',
+                       gene=c('Rv3161c', 'furA', 'mbtC', 'mbtD', 'mbtB', 'mmpL5', 
+                              'Rv0678', 'mmpS5', 'mbtI', 'Rv1057'))
+clof_sig_down <- data.frame(term='CLOF_DOWN',
+                            gene=c('bfrB', 'Rv2949c', 'pks15', 'fadD29', 'narK1', 
+                                   'Rv2959c', 'Rv0057', 'Rv0892', 'Rv2275', 'def'))
+abx_sig <- do.call(rbind, list(inh_sig, inh_sig_down, bdq_sig, bdq_sig_down, 
+                               pyr_sig, pyr_sig_down, clof_sig, clof_sig_down))                      
+          
+lap_genelist <- results_lap$log2FoldChange
+names(lap_genelist) <- rownames(results_lap)
+lap_genelist <- sort(lap_genelist, decreasing=T)
+lap_gsea_abx <- GSEA(geneList = lap_genelist, TERM2GENE = abx_sig, verbose = F, eps=1e-10, minGSSize = 1, pvalueCutoff = 1)
+
+
+lap_gsea_abx_df <- lap_gsea_abx@result[, c('ID', 'p.adjust', 'NES', 'Description', 'setSize')]
+lap_gsea_abx_df <- lap_gsea_abx_df[order(lap_gsea_abx_df$p.adjust, decreasing=T), ]
+
+lap_gsea_abx_df$Description <- factor(lap_gsea_abx_df$Description, levels=lap_gsea_abx_df$Description)
+ggplot(lap_gsea_abx_df, aes(x = -log10(p.adjust), y = Description, size = -log10(p.adjust), color = NES)) + 
+  scale_color_steps2(limits=c(-2.5, 2.5), n.breaks=6, 
+                     low = muted("blue"),
+                     mid = "white",
+                     high = muted("red")) + 
+  geom_point(stat = 'identity') + 
+  xlab("-log10(p.adjust)") + ylab("iModulon")  + 
+  theme_classic()
+```
+```{r}
+
+results_var <- results(dds_abx4h, contrast=c('Drug_Dose', 'var_25', 'var_5')) 
+
+var_genelist <- results_var$log2FoldChange
+names(var_genelist) <- rownames(results_var)
+var_genelist <- sort(var_genelist, decreasing=T)
+
+var_rvlist <- rv_map[names(var_genelist), 'Rv']
+names(var_genelist) <- var_rvlist
+
+
+var_gsea_imod <- GSEA(geneList = var_genelist, TERM2GENE = imod_genelist, verbose = F, eps=1e-10, minGSSize = 1, pvalueCutoff = 1)
+var_gsea_imod@result$Description <- imod_table[var_gsea_imod@result$ID, 'name']
+var_gsea_df <- var_gsea_imod@result[var_gsea_imod@result$p.adjust < 0.05, c('ID', 'p.adjust', 'NES', 'Description', 'setSize')]
+var_gsea_df <- var_gsea_df[order(var_gsea_df$p.adjust, decreasing=T), ]
+
+
+var_gsea_df$Description <- factor(var_gsea_df$Description, levels=var_gsea_df$Description)
+ggplot(var_gsea_df, aes(x = -log10(p.adjust), y = Description, size = -log10(p.adjust), color = NES)) + 
+  scale_color_steps2(limits=c(-2.5, 2.5), n.breaks=6, 
+                     low = muted("blue"),
+                     mid = "white",
+                     high = muted("red")) + 
+  geom_point(stat = 'identity') + 
+  xlab("-log10(p.adjust)") + ylab("iModulon")  + 
+  theme_classic()
 ```
