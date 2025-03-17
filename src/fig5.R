@@ -166,7 +166,16 @@ plotDEGs_method <- function(dds, coef, fc_thresh) {
 
 # for a comparison (coef), test whether is DE (> abs(log2fcthresh_high & < pthresh) or 
 #                          test whether is NOT DE (< fcthresh_low by Wald's test)
-getDEGs_category <- function(dds, coef, pthresh = 0.05, fcthresh_high=1, fcthresh_low=0.7) {
+getDEGs_category <- function(dds, coef, group=NA, pthresh = 0.05, fcthresh_high=1, fcthresh_low=0.7) {
+    print(coef)
+    if (!coef %in% resultsNames(dds)) {
+        ref_split <- coef %>% str_replace(., glue('{group}_'), '') %>% str_split(., '_vs_')
+        ref       <- ref_split[[1]][2]
+        dds[[group]] <- relevel(dds[[group]], ref=ref)
+        dds <- DESeq(dds)
+    }
+
+    print(resultsNames(dds))
     res_shr <- lfcShrink(dds, coef, type='apeglm')
     res_LA  <- results(dds, lfcThreshold = fcthresh_low, altHypothesis = 'lessAbs', 
                        name = coef)
@@ -177,29 +186,51 @@ getDEGs_category <- function(dds, coef, pthresh = 0.05, fcthresh_high=1, fcthres
 
     return(res_shr)
 }
-getDEGs_comparison <- function(dds1, dds2, coef1, coef2, fcthresh_low=0.7) {
+getDEGs_comparison <- function(dds1, dds2, coef1, coef2, group=NA, fcthresh_low=0.7, mode='single') {
     res_1 <- getDEGs_category(dds1, coef1, fcthresh_low=fcthresh_low)
     res_2 <- getDEGs_category(dds2, coef2, fcthresh_low=fcthresh_low)
+    if (mode == 'joint') {
+        ## assumes that dds1 and dds2 are the same thing....
+        coef_split1 <- coef1 %>% str_replace(., glue('{group}_'), '') %>% str_split(., '_vs_')
+        coef_split1 <- coef_split1[[1]][1] 
+        coef_split2 <- coef2 %>% str_replace(., glue('{group}_'), '') %>% str_split(., '_vs_')
+        coef_split2 <- coef_split2[[1]][1]
 
-    combined_rownames <- intersect(rownames(res_1), rownames(res_2))
+        print(coef_split1)
+        print(coef_split2)
+        coef_12     <- glue('{group}_{coef_split1}_vs_{coef_split2}')  
+        res_12   <- getDEGs_category(dds1, coef_12, group=group, fcthresh_low=fcthresh_low)
+
+        res_list <- list(res_1, res_2, res_12)
+        resnames <- list('1', '2', '12')
+    } else {
+        res_list <- list(res_1, res_2)
+        resnames <- list('1', '2')
+    }
+    combined_rownames <- Reduce(intersect, lapply(res_list, function(i) rownames(i)))
     combined_colnames <- c('log2FoldChange', 'DE', 'notDE', 'baseMean')
-    combined <- cbind(res_1[combined_rownames,
-                            combined_colnames], 
-                      res_2[combined_rownames,
-                            combined_colnames])
-    colnames(combined) <- c('FC_1', 'DE_1', 'notDE_1', 'baseMean_1', 
-                            'FC_2', 'DE_2', 'notDE_2', 'baseMean_2')
-
+    combined <- do.call(cbind,
+                        lapply(res_list, function(i) i[combined_rownames, combined_colnames])
+                )
+    colnames(combined) <- unlist(lapply(resnames, 
+                                 function(i) 
+                                     c(glue('FC_{i}'), glue('DE_{i}'), glue('notDE_{i}'), glue('baseMean_{i}'))
+                                 ))
     combined$category <- 'mixed evidence'
     combined[combined$DE_1 & !combined$notDE_2, 'category'] <- 'DE 1, DE 2 not excluded'
-    combined[combined$DE_1 & combined$FC_2 > fcthresh_low & !combined$DE_2, 'category'] <- 'DE 1, DE 2 likely'
+    combined[combined$DE_1 & abs(combined$FC_2) > fcthresh_low & !combined$DE_2, 'category'] <- 'DE 1, DE 2 likely'
     combined[combined$DE_1 & combined$notDE_2, 'category']  <- 'DE 1, DE 2 unlikely'                          
     combined[combined$DE_2 & combined$notDE_1, 'category']  <- 'DE 2, DE 1 unlikely'
     combined[combined$DE_2 & !combined$notDE_1, 'category'] <- 'DE 2, DE 1 not excluded'
-    combined[combined$DE_2 & combined$FC_1 > fcthresh_low & !combined$DE_1, 'category'] <- 'DE 2, DE 1 likely'
+    combined[combined$DE_2 & abs(combined$FC_1) > fcthresh_low & !combined$DE_1, 'category'] <- 'DE 2, DE 1 likely'
     combined[combined$DE_1 & combined$DE_2, 'category']     <- 'DE 1, DE 2'
     combined[combined$notDE_1 & combined$notDE_2, 'category'] <- 'low change'
 
+    # for joint mode, use differential expression information to triage DEGs 
+    if (mode == 'joint') { 
+        combined[combined$DE_1 & !combined$notDE_2 & !combined$DE_2 & combined$DE_12, 'category'] <- 'DE 1, DE 2 unlikely'
+        combined[combined$DE_2 & !combined$notDE_1 & !combined$DE_1 & combined$DE_12, 'category'] <- 'DE 2, DE 1 unlikely'
+    }
     return(combined)
 }
 
@@ -236,17 +267,17 @@ plotAxenicHeatmap <- function(dds, combined, group, conditions, mode='axenic') {
         col = list(fc_axenic = col_fun,
                category = hue_pal()(4))
         names(col$category) <- c('DE 1, DE 2', 'DE 1, DE 2 likely', 'DE 1, DE 2 unlikely', 'DE 1, DE 2 not excluded')
-    } else {
+    } else if (mode == 'joint') {
         degs <- rownames(combined[combined$DE_1 | combined$DE_2, ])
         annotation_row <- data.frame(category=combined[degs,'category'],
                                      fc_1=combined[degs, 'FC_1'], 
                                      fc_2=combined[degs, 'FC_2'],
                                      row.names=degs)
         col = list(fc_1 = col_fun, fc_2 = col_fun, 
-                   category = c('#F8766D', '#FF61C3', '#DB72FB', '#00B9E3', '#619CFF', '#00C19F', '#00BA38'))
+                   category = c('#DB72FB', '#FFA097', '#FF9FFF', '#FFD9D0', '#FFDAFF', '#F8766D', '#FF61C3'))
 
         names(col$category) <- c('DE 1, DE 2', 'DE 1, DE 2 likely', 'DE 2, DE 1 likely', 'DE 1, DE 2 not excluded', 
-                                 'DE 1, DE 2 unlikely', 'DE 2, DE 1 not excluded', 'DE 2, DE 1 unlikely') 
+                                 'DE 2, DE 1 not excluded', 'DE 1, DE 2 unlikely', 'DE 2, DE 1 unlikely') 
     }
 
     mat_subset <- vsd[degs, vsd[[group]] %in% conditions]
@@ -260,6 +291,40 @@ plotAxenicHeatmap <- function(dds, combined, group, conditions, mode='axenic') {
     return(hm)
 }
 
+plotGSEA <- function(combined) {
+    list_1 <- combined$FC_1
+    names(list_1) <- rownames(combined)
+    list_1 <- sort(list_1, decreasing=T)
+    
+    list_2 <- combined$FC_2
+    names(list_2) <- rownames(combined)
+    list_2 <- sort(list_2, decreasing=T)
+
+
+    sigEreg <- c('mprA', 'mprB', 'sigB', 'sigE', '35kd_ag', 'clgR', 'hsp', 'icl1',
+                 'fadB2', 'Rv0465c', 'dinG', 'Rv0516c', 'htpX', 'pepD', 'moaB2', 'Rv1057',
+                 'Rv1129c', 'prpD', 'prpC', 'Rv2743c', 'Rv2742c', 'fadE23', 'fadE24')
+    virSreg <- c('Rv3085', 'Rv3083', 'lipR', 'adhD', 'tgs4', 'fadD13', 'Rv3087', 'Rv3742c')
+    regulon_sigE <- data.frame(term='sigE', gene_list=sigEreg)
+    regulon_virS <- data.frame(term='virS', gene_list=virSreg)
+    
+    regulon      <- rbind(regulon_sigE, regulon_virS)
+
+    gsea_results <- lapply(list(list_1, list_2), function(i)
+                                GSEA(geneList = i, TERM2GENE = regulon, verbose = F, 
+                                     eps=1e-10, minGSSize = 1, pvalueCutoff = 1)
+                           )
+    print(gsea_results[[1]]@result)
+    print(gsea_results[[2]]@result) 
+    sfig_6gh <- lapply(gsea_results, function(i)
+                    gseaplot(i, geneSetID = 2, 
+                             by = "runningScore", title = gsea_results$Description[2]) + 
+                    scale_y_continuous(limits = c(-1, 1))
+                )
+    sfig_6gh <- plot_grid(sfig_6gh[[1]], sfig_6gh[[2]], labels=c('G', 'H'))
+    lapply(c('pdf', 'png'), function(ext) ggsave(glue('./fig/sfig6/sfig6gh.{ext}'), sfig_6gh, width=8, height=4))
+}
+
 
 library(glue)
 library(ggplot2)
@@ -267,11 +332,14 @@ library(cowplot)
 library(DESeq2)
 library(apeglm)
 library(dplyr)
+library(stringr)
 library(eulerr)
 library(RColorBrewer)
 library(ComplexHeatmap)
 library(circlize)
 library(scales)
+library(clusterProfiler)
+library(enrichplot)
 
 wd = './data/DE_results'
 exp_intra = '20240502_pel-timecourse-6donor_pathogen'
@@ -290,7 +358,9 @@ coefs_axenic <- lapply(c('pel', 'gef'), function(i) glue('Drug_{i}_vs_DMSO'))
 combined_pel_intra_axenic <- getDEGs_comparison(dds_intra, dds_axenic, coefs_intra[[1]], coefs_axenic[[1]])
 combined_gef_intra_axenic <- getDEGs_comparison(dds_intra, dds_axenic, coefs_intra[[2]], coefs_axenic[[2]])
 
-plotDEGs_comparison(combined_pel_intra_axenic, 'intracellular', 'axenic')
+#plotDEGs_comparison(combined_pel_intra_axenic, 'intracellular', 'axenic')
+
+plotGSEA(combined_pel_intra_axenic)
 
 hm_pel <- plotAxenicHeatmap(dds_intra, combined_pel_intra_axenic, 'Drug_Day', conditions=c('pel_d1', 'DMSO_d1', 'phago_4h'))
 png(file='./fig/fig5/fig5d.png', width=8, height=10, units='in', res=480)#, width=8*units(1, 'in'), height=10*units(1,'in'))
@@ -302,7 +372,7 @@ png(file='./fig/fig5/fig5e.png', width=8, height=10, units='in', res=480)
 draw(hm_gef)
 dev.off()
 
-combined_pelgef <- getDEGs_comparison(dds_intra, dds_intra, coefs_intra[[1]], coefs_intra[[2]])
+combined_pelgef <- getDEGs_comparison(dds_intra, dds_intra, coefs_intra[[1]], coefs_intra[[2]], group='Drug_Day', mode='joint')
 hm_pelgef <- plotAxenicHeatmap(dds_intra, combined_pelgef, 'Drug_Day', conditions=c('pel_d1', 'DMSO_d1', 'gef_d1'), mode='joint')
 png(file='./fig/fig5/fig5f.png', width=8, height=15, units='in', res=480)
 draw(hm_pelgef)
