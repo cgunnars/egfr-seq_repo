@@ -1,12 +1,10 @@
 getDE <- function(dds, comparison, filestem, p_thresh=0.05, fc_thresh=1) {
     # pull from design and comparison list to generate the contrast
-    print(comparison)
     group      <- unlist(as.character(design(dds))[-1])
     comp <- unlist(str_split(comparison, pattern='_vs_'))
     case <- comp[1]
     ref  <- comp[2]
     
-    print(group)
     dds[[group]] <- relevel(dds[[group]], ref=ref)
     dds        <- DESeq(dds, quiet=T)
     ## TODO APEGLM
@@ -36,7 +34,7 @@ getDE <- function(dds, comparison, filestem, p_thresh=0.05, fc_thresh=1) {
                          x='log2FoldChange', y='pvalue', 
                          FCcutoff=1, pCutoff=0.05, pCutoffCol='padj',
                          labSize=5, pointSize=1, 
-                         col=c('grey30', 'grey30', 'grey30', 'red2'))
+                         col=c('grey30', 'grey30', 'grey30', 'red2')) + theme_classic()
     ggsave(plot=p, filename=glue('./fig/DE_results/{filestem}_volcano_{comparison}.pdf'))
 }
 
