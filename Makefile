@@ -4,6 +4,9 @@ INTRA6H_STEM=20240502_pel-timecourse-6donor_host
 INTRA6P_STEM=20240502_pel-timecourse-6donor_pathogen
 INTRAP_STEM=20240405_pel-timecourse_pathogen
 
+AXENIC_CONDS := gef pel
+INTRA_CONDS := gef_d1 pel_d1 sara_d1
+
 ALL_STEMS := $(AXENIC_STEM) $(ABX_STEM) $(INTRA6H_STEM) $(INTRA6P_STEM) $(INTRAP_STEM)
 ### PREPROCESSING into a standard format
 data/raw_dds/$(ABX_STEM).Rds: src/loadData.R data/raw_counts/$(ABX_STEM).tsv
@@ -181,28 +184,46 @@ fig4: $(relative_heatmaps_pathogen) $(relative_heatmaps_host) iMod_enrich_unique
 fig/growth/RNAseq_lux.pdf: src/plotDay1.R #data/lux_data/pel-clean_data.xlsx
 	Rscript $< 
 
-
-
 relative_heatmap_host := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6H_STEM)_,  $(INTRA_CONDS))))
 relative_heatmap_pathogen := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6P_STEM)_,  $(INTRA_CONDS)))) 
 relative_heatmaps: $(relative_heatmap_host) $(relative_heatmap_pathogen)
 ## SUPPLEMENTARY FIGURE HOST INFORMATION
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_pel_d1.pdf: src/relative_heatmap.R 
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_pel.pdf: src/relative_heatmap.R 
 	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r pel -c gef -d sara -g Drug
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef_d1.pdf: src/relative_heatmap.R
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef.pdf: src/relative_heatmap.R
 	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r gef -c pel -d sara -g Drug
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara_d1.pdf: src/relative_heatmap.R
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara.pdf: src/relative_heatmap.R
 	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r sara -c pel -d gef -g Drug
 
 ## FIGURE 4	
 fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_pel_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r pel_d1 -c gef_d1 -d sara_d1 -g Drug_Day
+data/DE_results/combined/$(INTRA6P_STEM)_pel_d1_gef_d1_sara_d1.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_gef_d1.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
 fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_gef_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r gef_d1 -c pel_d1 -d sara_d1 -g Drug_Day
+data/DE_results/combined/$(INTRA6P_STEM)_gef_d1_pel_d1_sara_d1.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_gef_d1.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
 fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r sara_d1 -c pel_d1 -d gef_d1 -g Drug_Day
+data/DE_results/combined/$(INTRA6P_STEM)_sara_d1_pel_d1_gef_d1.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_sara_d1.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
 
-fig/combined_bar/$(INTRA6P_STEM).pdf: src/combined_bar_venn.R
+combined_p_conds := pel_d1_gef_d1_sara_d1 gef_d1_pel_d1_sara_d1 sara_d1_pel_d1_gef_d1
+combined_h_conds := pel_gef_sara gef_pel_sara sara_pel_gef
+combined_pathogen: $(addprefix data/DE_results/combined/$(INTRA6P_STEM)_, $(addsuffix .csv, $(combined_p_conds)))
+combined_host: $(addprefix data/DE_results/combined/$(INTRA6H_STEM)_, $(addsuffix .csv, $(combined_h_conds))) 
+
+fig/combined_bar/$(INTRA6P_STEM).pdf: src/combined_bar_venn.R combined_pathogen
 	Rscript $< -e $(INTRA6P_STEM) -a pel_d1 -b gef_d1 -c sara_d1 -v DMSO_d1 -g Drug_Day
 data/DE_results/$(INTRA6P_STEM)_%_d1_unique.txt: fig/combined_bar/$(INTRA6P_STEM).pdf
 	@if test -f $@; then :; else\
@@ -215,7 +236,7 @@ data/DE_results/$(INTRA6P_STEM)_likely_shared.txt: fig/combined_bar/$(INTRA6P_ST
 		make $<; \
 	fi
 
-fig/combined_bar/$(INTRA6H_STEM).pdf: src/combined_bar_venn.R
+fig/combined_bar/$(INTRA6H_STEM).pdf: src/combined_bar_venn.R combined_host
 	Rscript $< -e $(INTRA6H_STEM) -a pel -b gef -c sara -v DMSO -g Drug
 data/DE_results/$(INTRA6H_STEM)_%_unique.txt: fig/combined_bar/$(INTRA6H_STEM).pdf
 	@if test -f $@; then :; else\
@@ -246,8 +267,6 @@ regulators_plot := $(addprefix fig/regulators/sigma_, $(addsuffix .pdf, $(INTRA_
 sfig_regulators: $(regulators_plot)
 
 ### SUPPLEMENTARY FIGURE GSEA 
-AXENIC_CONDS := gef pel
-INTRA_CONDS := gef_d1 pel_d1 sara_d1
 axenic_gsea := $(addprefix fig/gsea/gsea_, $(addsuffix _$(AXENIC_STEM)_axenic.pdf, $(AXENIC_CONDS)))
 intra_gsea := $(addprefix fig/gsea/gsea_, $(addsuffix _$(INTRA6P_STEM)_intra.pdf, $(INTRA_CONDS)))
 fig/gsea/gsea_%_$(AXENIC_STEM)_axenic.pdf: src/plotGSEA.R data/DE_results/$(AXENIC_STEM).Rds
