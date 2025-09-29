@@ -54,7 +54,6 @@ calcAbxDE <- function(dds, drug, dose) {
     
     res  <- lapply(refs, function(ref) calcDE(dds, group, cond, ref))
 
-    #print(lapply(res, function(r) r[c('usfY', 'ino1', 'menH', 'lat', 'pcd', 'Rv3292', 'pyrB', 'pyrC', 'pyrR', 'Rv0047c', 'Rv0045c'), ]))
     de   <- lapply(res, function(r) r %>% subset(., abs(log2FoldChange) > 1 & padj < 0.05) %>% rownames())
 
     
@@ -71,7 +70,6 @@ calcDoseDE <- function(dds, drug) {
 
     res <- calcDE(dds, group, cond, ref)
 
-#    print(res[c('usfY', 'ino1', 'menH', 'lat', 'carA', 'carB', 'pyrB', 'pyrC', 'pyrR', 'Rv0047c', 'Rv0045c'), ])
     de  <- res %>% subset(., abs(log2FoldChange) > 1 & padj < 0.05) %>% rownames()
 
     names(de) <- c(glue('{cond}_vs_{ref}'))
@@ -120,7 +118,6 @@ var_genes <- list(de_var_25[[1]], de_var_25[[2]],
 names(var_genes) <- c('var_25_vs_pel_25', 'var_25_vs_gef_25', 
                       'var_25_vs_var_5')
 
-print(var_genes)
 pl <- upset(fromList(var_genes), order.by='freq')
 pdf('~/egfr-seq_repo/fig/abx-dose/var_upset.pdf', height=5, width=5)
 pl

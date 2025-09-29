@@ -6,6 +6,7 @@ INTRAP_STEM=20240405_pel-timecourse_pathogen
 
 AXENIC_CONDS := gef pel
 INTRA_CONDS := gef_d1 pel_d1 sara_d1
+INTRAHOST_CONDS := gef pel sara
 INTRAAXENIC_CONDS := gef_d1 pel_d1
 
 ALL_STEMS := $(AXENIC_STEM) $(ABX_STEM) $(INTRA6H_STEM) $(INTRA6P_STEM) $(INTRAP_STEM)
@@ -112,8 +113,6 @@ fig/DE_results/$(INTRA6H_STEM)_%_full.csv: data/DE_results/$(INTRA6H_STEM).Rds
 DE := $(foreach n, $(ALL_STEMS), $(addprefix data/DE_results/, $(addprefix $n, .Rds)))
 DE_dds: $(DE)
 
-
-
 ## FIGURE 1 CHEMICAL INFO
 fig/chem_info/tanimoto.svg: src/getSMILES.py data/lux_data/compiled-clean-data.xlsx
 	python $<
@@ -185,7 +184,7 @@ fig4: $(relative_heatmaps_pathogen) $(relative_heatmaps_host) iMod_enrich_unique
 fig/growth/RNAseq_lux.pdf: src/plotDay1.R #data/lux_data/pel-clean_data.xlsx
 	Rscript $< 
 
-relative_heatmap_host := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6H_STEM)_,  $(INTRA_CONDS))))
+relative_heatmap_host := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6H_STEM)_,  $(INTRAHOST_CONDS))))
 relative_heatmap_pathogen := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6P_STEM)_,  $(INTRA_CONDS)))) 
 relative_heatmaps: $(relative_heatmap_host) $(relative_heatmap_pathogen)
 ## SUPPLEMENTARY FIGURE HOST INFORMATION
@@ -301,7 +300,7 @@ data/DE_results/combined/combined_intraaxenic_%_{ABX_STEM).csv: fig/axenic_heatm
 	fi
 fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(INTRAP_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(INTRAP_STEM) -c pel_d1 -d pel_d1 -v DMSO_d1 -w DMSO_d1 -g Drug_Day -j Drug_Day
-data/DE_results/combined/combined_intraaxenic_pel_d1_{INTRAP_STEM).csv: fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf
+data/DE_results/combined/combined_intraaxenic_pel_d1_$(INTRAP_STEM).csv: fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
@@ -310,18 +309,14 @@ data/DE_results/combined/combined_intraaxenic_pel_d1_{INTRAP_STEM).csv: fig/axen
 combined_intraaxenic := $(addprefix data/DE_results/combined/combined_intraaxenic_, $(addsuffix _$(AXENIC_STEM).csv, $(INTRAAXENIC_CONDS)))
 combined_intraabx := $(addprefix data/DE_results/combined/combined_intraaxenic_, $(addsuffix _$(ABX_STEM).csv, $(INTRAAXENIC_CONDS)))
 combined_intraaxenic_tables: $(combined_intraaxenic) $(combined_intraabx)
-
-fig/relative_heatmap/%_intra-axenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_{AXENIC_STEM}.csv
+fig/relative_heatmap/%_intraaxenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_{AXENIC_STEM}.csv
 	Rscript $< -c $* -m intraaxenic -e $(INTRA6P_STEM) $(AXENIC_STEM)
-
 fig/relative_heatmap/%_single_iModulon.pdf: src/geneListToGSEA.R
 	Rscript $< -c $* -m single -e $(INTRAP_STEM)
-
-iMod_enrich_axenic: fig/relative_heatmap/pel_d1_intra-axenic_allcomps_iModulon.pdf fig/relative_heatmap/gef_d1_intra-axenic_allcomps_iModulon.pdf
+iMod_enrich_axenic: fig/relative_heatmap/pel_d1_intraaxenic_allcomps_iModulon.pdf fig/relative_heatmap/gef_d1_intraaxenic_allcomps_iModulon.pdf
 	
 fig/relative_heatmap/all_drugs_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt 
 	Rscript $< -c all -m drugs -n 320 -e $(INTRA6P_STEM) 
-
 iMod_enrich_unique: fig/relative_heatmap/all_drugs_iModulon.pdf
 
 ## SUPPLEMENTARY FIGURE -- WALD TEST SCHEME

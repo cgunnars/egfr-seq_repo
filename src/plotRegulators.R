@@ -12,7 +12,6 @@ makeGeneDf <- function(dds) {
     genedf$Donor <- meta$Donor
     genedf$Drug_Donor <- paste(meta$Drug, meta$Donor, sep='_')
     genedf$Donor_Day  <- as.factor(paste(meta$Donor, meta$Day, sep='_'))
-    print(head(genedf))
     return(genedf)
 }
 

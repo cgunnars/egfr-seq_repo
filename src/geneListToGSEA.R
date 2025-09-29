@@ -56,7 +56,6 @@ enrich_imod <- function(gene_list, n_bg=NA) {
     gsea_df$padj <- p.adjust(gsea_df$p, method='BH')
     gsea_df$genes <- genelist_bymod[imods_test]
 
-    print(n_bg)
     return(list(table, gsea_df, gene_mod))
 }
 
@@ -173,7 +172,6 @@ if (mode == 'intraaxenic') {
 } else if (mode == 'single') {
 	exp   <- exp
 	degs <- read.csv(glue('{data_dir}/{exp}_{comparison}_vs_DMSO_d1_DE.csv'), row.names=1) %>% row.names()
-	print(degs)
 	gene_lists <- list(degs)
 	comp_names <- c(comparison)
 	n_bg <- c(n_bg)
@@ -197,7 +195,6 @@ lapply(seq(length(gsea_dfs)),
 ## ALSO PLOT OVERALL EXPRESSION OF IMODS
 if (mode == 'drugs') {
 	gene_mod <- gene_mods[[1]]
-	print(dim(gene_mod[gene_mod$locus %in% unlist(gene_lists), ]))
 	group = 'Drug_Day'
 	conditions = c('pel_d1', 'gef_d1', 'sara_d1')
 	all_degs <- lapply(conditions,

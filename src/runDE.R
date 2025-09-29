@@ -12,7 +12,6 @@ getDE <- function(dds, comparison, filestem, p_thresh=0.05, fc_thresh=1) {
                                     type='apeglm')#, lfcThreshold=fc_thresh)
     res.apethresh      <- lfcShrink(dds=dds, coef=glue('{group}_{case}_vs_{ref}'),
                                     type='apeglm', lfcThreshold=fc_thresh)
-    print(head(res.ape))
     resLA              <- results(dds, lfcThreshold=fc_thresh, altHypothesis='lessAbs', 
                                   name=glue('{group}_{case}_vs_{ref}'))
     res.ape['padj_LA'] <- resLA['padj'] 

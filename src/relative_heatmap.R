@@ -62,8 +62,6 @@ hm_ref12 <- plotAxenicHeatmap(dds_intra, combined_ref12, group, conditions=condi
 fig_height = 5 + length(combined_ref12[combined_ref12$DE_1, ]) / 2.5 
 fig_width  = length(conditions) * 2 
 
-print(fig_height)
-print(fig_width)
 pdf(file=glue('{fig_dir}/relative_heatmap_{experiment}_{ref}.pdf'), 
     width=fig_width, height=fig_height)#, units='in', res=480)
 draw(hm_ref12)

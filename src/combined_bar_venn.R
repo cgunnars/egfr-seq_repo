@@ -176,15 +176,12 @@ dev.off()
 
 ## reassemble truth table and write to file
 rownames <- combined_all[[1]]$X 
-print(rownames)#
 data <- lapply(seq(3), function(i) combined_all[[i]][, c('FC_1', 'DE_1', 'notDE_1')])
 data <- do.call('cbind', data)
 rownames(data) <- rownames
 
 colnames = lapply(refs_all, function(i) c(glue('FC_{i}'), glue('DE_{i}'), glue('notDE_{i}'))) %>% unlist(.)
 
-print(colnames)
 
 colnames(data) <- colnames
-print(head(data))
 write.csv(data, glue('./data/DE_results/combined/combined_{experiment}_full-category.csv'))
