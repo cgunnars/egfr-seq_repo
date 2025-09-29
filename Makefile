@@ -211,10 +211,65 @@ relative_heatmaps: $(relative_heatmap_host) $(relative_heatmap_pathogen)
 ## SUPPLEMENTARY FIGURE HOST INFORMATION
 fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_pel.pdf: src/relative_heatmap.R 
 	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r pel -c gef -d sara -g Drug
+data/DE_results/combined/$(INTRA6H_STEM)_pel_gef_sara.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_pel.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
 fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef.pdf: src/relative_heatmap.R
 	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r gef -c pel -d sara -g Drug
+data/DE_results/combined/$(INTRA6H_STEM)_gef_pel_sara.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
 fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara.pdf: src/relative_heatmap.R
 	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r sara -c pel -d gef -g Drug
+data/DE_results/combined/$(INTRA6H_STEM)_sara_pel_gef.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef.pdf: src/relative_heatmap.R
+	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r gef -c pel -d sara -g Drug
+data/DE_results/combined/$(INTRA6H_STEM)_gef_pel_sara.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara.pdf: src/relative_heatmap.R
+	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r sara -c pel -d gef -g Drug
+
+sfig_host_hms := $(addprefix fig/relative/heatmap/relative_heatmap_$(INTRA6H_STEM)_, $(addsuffix .pdf, $(INTRAHOST_CONDS)))
+sfig_host: $(sfig_host_hms)
+
+## FIGURE 4	
+fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_pel_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
+	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r pel_d1 -c gef_d1 -d sara_d1 -g Drug_Day
+data/DE_results/combined/$(INTRA6P_STEM)_pel_d1_gef_d1_sara_d1.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_pel_d1.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_gef_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
+	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r gef_d1 -c pel_d1 -d sara_d1 -g Drug_Day
+data/DE_results/combined/$(INTRA6P_STEM)_gef_d1_pel_d1_sara_d1.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_gef_d1.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
+	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r sara_d1 -c pel_d1 -d gef_d1 -g Drug_Day
+data/DE_results/combined/$(INTRA6P_STEM)_sara_d1_pel_d1_gef_d1.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_sara_d1.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+
+combined_p_conds := pel_d1_gef_d1_sara_d1 gef_d1_pel_d1_sara_d1 sara_d1_pel_d1_gef_d1
+combined_h_conds := pel_gef_sara gef_pel_sara sara_pel_gef
+combined_pathogen_tables: $(addprefix data/DE_results/combined/$(INTRA6P_STEM)_, $(addsuffix .csv, $(combined_p_conds)))
+combined_host_tables: $(addprefix data/DE_results/combined/$(INTRA6H_STEM)_, $(addsuffix .csv, $(combined_h_conds))) 
 
 sfig_host_hms := $(addprefix fig/relative/heatmap/relative_heatmap_$(INTRA6H_STEM)_, $(addsuffix .pdf, $(INTRAHOST_CONDS)))
 sfig_host: $(sfig_host_hms)
