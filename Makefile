@@ -6,6 +6,7 @@ INTRAP_STEM=20240405_pel-timecourse_pathogen
 
 AXENIC_CONDS := gef pel
 INTRA_CONDS := gef_d1 pel_d1 sara_d1
+INTRAAXENIC_CONDS := gef_d1 pel_d1
 
 ALL_STEMS := $(AXENIC_STEM) $(ABX_STEM) $(INTRA6H_STEM) $(INTRA6P_STEM) $(INTRAP_STEM)
 ### PREPROCESSING into a standard format
@@ -220,10 +221,10 @@ data/DE_results/combined/$(INTRA6P_STEM)_sara_d1_pel_d1_gef_d1.csv: fig/relative
 
 combined_p_conds := pel_d1_gef_d1_sara_d1 gef_d1_pel_d1_sara_d1 sara_d1_pel_d1_gef_d1
 combined_h_conds := pel_gef_sara gef_pel_sara sara_pel_gef
-combined_pathogen: $(addprefix data/DE_results/combined/$(INTRA6P_STEM)_, $(addsuffix .csv, $(combined_p_conds)))
-combined_host: $(addprefix data/DE_results/combined/$(INTRA6H_STEM)_, $(addsuffix .csv, $(combined_h_conds))) 
+combined_pathogen_tables: $(addprefix data/DE_results/combined/$(INTRA6P_STEM)_, $(addsuffix .csv, $(combined_p_conds)))
+combined_host_tables: $(addprefix data/DE_results/combined/$(INTRA6H_STEM)_, $(addsuffix .csv, $(combined_h_conds))) 
 
-fig/combined_bar/$(INTRA6P_STEM).pdf: src/combined_bar_venn.R combined_pathogen
+fig/combined_bar/$(INTRA6P_STEM).pdf: src/combined_bar_venn.R combined_pathogen_tables
 	Rscript $< -e $(INTRA6P_STEM) -a pel_d1 -b gef_d1 -c sara_d1 -v DMSO_d1 -g Drug_Day
 data/DE_results/$(INTRA6P_STEM)_%_d1_unique.txt: fig/combined_bar/$(INTRA6P_STEM).pdf
 	@if test -f $@; then :; else\
@@ -236,7 +237,7 @@ data/DE_results/$(INTRA6P_STEM)_likely_shared.txt: fig/combined_bar/$(INTRA6P_ST
 		make $<; \
 	fi
 
-fig/combined_bar/$(INTRA6H_STEM).pdf: src/combined_bar_venn.R combined_host
+fig/combined_bar/$(INTRA6H_STEM).pdf: src/combined_bar_venn.R combined_host_tables
 	Rscript $< -e $(INTRA6H_STEM) -a pel -b gef -c sara -v DMSO -g Drug
 data/DE_results/$(INTRA6H_STEM)_%_unique.txt: fig/combined_bar/$(INTRA6H_STEM).pdf
 	@if test -f $@; then :; else\
@@ -280,19 +281,37 @@ gsea: $(axenic_gsea) $(intra_gsea) fig/gsea/gsea_pel_d1_$(INTRAP_STEM)_intra.pdf
 ## FIGURE 5 AXENIC EFFECTS
 fig5: fig/DE_results/$(AXENIC_STEM)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(AXENIC_STEM)_volcano_gef_vs_DMSO.pdf $(axenic_joint_heatmaps) iMod_enrich_axenic	
 
+# produces plot + data table containing categorizations
 axenic_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(AXENIC_STEM).pdf, $(AXENIC_CONDS)))
 abx_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(ABX_STEM).pdf, $(AXENIC_CONDS)))
 joint_heatmaps: $(axenic_joint_heatmaps) $(abx_joint_heatmaps) fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(AXENIC_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(AXENIC_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(AXENIC_STEM) -c $*_d1 -d $* -v DMSO_d1 -w DMSO -g Drug_Day -j Drug
-
+data/DE_results/combined/combined_intraaxenic_%_{AXENIC_STEM).csv: fig/axenic_heatmap/axenic_heatmap_%_d1_$(AXENIC_STEM).pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(ABX_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(ABX_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(ABX_STEM) -c $*_d1 -d $*_25 -v DMSO_d1 -w $*_5 -g Drug_Day -j Drug_Dose
-
-fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf: src/axenic_heatmap.R
+data/DE_results/combined/combined_intraaxenic_%_{ABX_STEM).csv: fig/axenic_heatmap/axenic_heatmap_%_d1_$(ABX_STEM).pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(INTRAP_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(INTRAP_STEM) -c pel_d1 -d pel_d1 -v DMSO_d1 -w DMSO_d1 -g Drug_Day -j Drug_Day
+data/DE_results/combined/combined_intraaxenic_pel_d1_{INTRAP_STEM).csv: fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
 
-fig/relative_heatmap/%_intra-axenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt
+combined_intraaxenic := $(addprefix data/DE_results/combined/combined_intraaxenic_, $(addsuffix _$(AXENIC_STEM).csv, $(INTRAAXENIC_CONDS)))
+combined_intraabx := $(addprefix data/DE_results/combined/combined_intraaxenic_, $(addsuffix _$(ABX_STEM).csv, $(INTRAAXENIC_CONDS)))
+combined_intraaxenic_tables: $(combined_intraaxenic) $(combined_intraabx)
+
+fig/relative_heatmap/%_intra-axenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_{AXENIC_STEM}.csv
 	Rscript $< -c $* -m intraaxenic -e $(INTRA6P_STEM) $(AXENIC_STEM)
 
 fig/relative_heatmap/%_single_iModulon.pdf: src/geneListToGSEA.R
