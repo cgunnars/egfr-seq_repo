@@ -237,8 +237,8 @@ sfig_regulators: $(regulators_plot)
 ## FIGURE 5 AXENIC EFFECTS
 fig5: fig/DE_results/$(AXENIC_STEM)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(AXENIC_STEM)_volcano_gef_vs_DMSO.pdf $(axenic_joint_heatmaps) $(iMod_enrich_axenic)	
 
-axenic_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(AXENIC_STEM).pdf, $(AXENIC_CONDS))))
-abx_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(ABX_STEM).pdf, $(AXENIC_CONDS))))
+axenic_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(AXENIC_STEM).pdf, $(AXENIC_CONDS)))
+abx_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(ABX_STEM).pdf, $(AXENIC_CONDS)))
 joint_heatmaps: $(axenic_joint_heatmaps) $(abx_joint_heatmaps) fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(AXENIC_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(AXENIC_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(AXENIC_STEM) -c $*_d1 -d $* -v DMSO_d1 -w DMSO -g Drug_Day -j Drug
