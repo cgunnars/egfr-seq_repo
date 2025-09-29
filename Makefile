@@ -301,7 +301,7 @@ fig/relative_heatmap/%_single_iModulon.pdf: src/geneListToGSEA.R
 iMod_enrich_axenic: fig/relative_heatmap/pel_d1_intra-axenic_allcomps_iModulon.pdf fig/relative_heatmap/gef_d1_intra-axenic_allcomps_iModulon.pdf
 	
 fig/relative_heatmap/all_drugs_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt 
-	Rscript $< -c all -m drugs -n 320 
+	Rscript $< -c all -m drugs -n 320 -e $(INTRA6P_STEM) 
 
 iMod_enrich_unique: fig/relative_heatmap/all_drugs_iModulon.pdf
 
