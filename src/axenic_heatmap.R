@@ -18,7 +18,7 @@ plotDEGs_comparison <- function(combined, lab1, lab2, outname, fcthresh_low=0.7)
     names(DEG_bycat) <- c(glue('DE, unlikely {lab2} effect'), glue('DE, not an {lab2} DE'), glue('DE, {lab2} effect'))
     venn <- plot(euler(DEG_bycat, labels=names(DEG_bycat)), quantities=T)     
     p <- plot_grid(biplot, venn)
-    lapply(c('pdf', 'png'), function(ext) ggsave(glue('./fig/axenic_heatmap/venn-biplot_{outname}.{ext}'), p, width=8, height=4))
+    lapply(c('pdf', 'png'), function(ext) ggsave(glue('./fig/axenic_heatmap/venn-biplot_{outname}.{ext}'), p, width=8, height=4, create.dir=T))
 }
 source('src/utilities.R')
 prepEnv()

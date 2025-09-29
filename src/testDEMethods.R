@@ -124,9 +124,9 @@ plotDEGs_method <- function(dds, coef, fc_thresh, outname) {
     nunspec_df <- results$nunspec_df
     sfig_6c <- ggplot(data = nunspec_df, aes(x=fc_thresh, y=n, fill=category)) + geom_area(alpha=0.6) + theme_classic()
 
-    ggsave(glue('./fig/deg-method/sfig6a_{outname}.pdf'), sfig_6a, width=6, height=3)
-    ggsave(glue('./fig/deg-method/sfig6b_{outname}.pdf'), sfig_6b, width=15, height=3)
-    ggsave(glue('./fig/deg-method/sfig6c_{outname}.pdf'), sfig_6c, width=6, height=3)
+    ggsave(glue('./fig/deg-method/sfig6a_{outname}.pdf'), sfig_6a, width=6, height=3, create.dir=T)
+    ggsave(glue('./fig/deg-method/sfig6b_{outname}.pdf'), sfig_6b, width=15, height=3, create.dir=T)
+    ggsave(glue('./fig/deg-method/sfig6c_{outname}.pdf'), sfig_6c, width=6, height=3, create.dir=T)
 }
 
 source('./src/utilities.R')

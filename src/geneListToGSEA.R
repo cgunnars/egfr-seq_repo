@@ -88,7 +88,7 @@ plotEnrich <- function(tables, gsea_dfs, outname) {
                   position=position_fill(vjust = .5)) +
         theme_classic()
     ggsave(glue('./fig/relative_heatmap/{outname}_allcomps_iModulon.pdf'),
-           width=4 * length(tables), height=3, dpi=300, units='in')
+           width=4 * length(tables), height=3, dpi=300, units='in', create.dir=T)
 
 }
 

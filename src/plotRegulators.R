@@ -86,7 +86,7 @@ pa <- plotUpregulation(sigma_df, de_sigma)
 pb <- plotUpregulation(tcs_df, de_tcs)
 
 a  <- ggsave(glue('./fig/regulators/sigma_{cond}.pdf'), pa,
-                  width=9, height=2.5)
+                  width=9, height=2.5, create.dir=T)
                                                   
 b  <- ggsave(glue('./fig/regulators/tcs_{cond}.pdf'), pb, 
-      	     width=9, height=7.5)
+      	     width=9, height=7.5, create.dir=T)

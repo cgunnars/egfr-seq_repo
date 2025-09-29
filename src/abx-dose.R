@@ -33,7 +33,7 @@ pcaPlot <- function(vsd, color, shape, name, ntop=500, npcs=3) {
              xlab(glue('PC{pcsToUse[1]}: {percentVar[index_1]}% variance')) +
              ylab(glue('PC{pcsToUse[2]}: {percentVar[index_2]}% variance')) +
              scale_color_manual(values=cols) + theme_classic()
-        ggsave(glue('./fig/abx-dose/pca_{name}_{pcsToUse[1]}_{pcsToUse[2]}.pdf'), p, width=5, height=5)
+        ggsave(glue('./fig/abx-dose/pca_{name}_{pcsToUse[1]}_{pcsToUse[2]}.pdf'), p, width=5, height=5, create.dir=T)
     }
 
 }
@@ -226,7 +226,7 @@ pc_loadings_df$var_DEG <- rownames(pc_loadings_df) %in% unname(unlist((de_dose$v
 
 p_loadings <- ggplot(pc_loadings_df, aes(y=PC1,x=gene,fill=gef_DEG)) + geom_bar(stat='identity') + theme_classic() + 
                 theme(axis.text.x = element_text(angle = 45, hjust = 1, vjust = 1))
-ggsave('./fig/abx-dose/non-lap_loadings.pdf', p_loadings, width=4.5, height=2)
+ggsave('./fig/abx-dose/non-lap_loadings.pdf', p_loadings, width=4.5, height=2, create.dir=T)
 
 
 

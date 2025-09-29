@@ -82,13 +82,13 @@ ggplot(data = cat_df, aes(x=name, y=n, fill=value)) +
     facet_grid(vars(dir), vars(condition)) +
     theme_classic()
 ggsave(glue('./fig/combined_bar/{experiment}_fill.pdf'),
-        width=6, height=3, dpi=300, units='in')
+        width=6, height=3, dpi=300, units='in', create.dir=T)
 
 ggplot(data = n_df, aes(x=condition, y=n)) +
        geom_bar(position='identity', stat='identity') +
        facet_grid(vars(dir)) + theme_classic()
 ggsave(glue('./fig/combined_bar/{experiment}_n.pdf'), 
-       width=6, height=3, dpi=300, units='in')
+       width=6, height=3, dpi=300, units='in', create.dir=T)
 
 
 
@@ -141,7 +141,7 @@ venn_colors <- c(drug_colors, unique_colors)
 venn_colors <- venn_colors[names(all_deglikely)]
 ## TODO: fix venn colors... or don't
 shared_venn <- plot(euler(all_deg, labels=names(all_deglikely), shape='ellipse'), fills=venn_colors, quantities=T)
-ggsave(glue('./fig/combined_bar/{experiment}_vennlikely.pdf'), shared_venn, width=8, height=8)
+ggsave(glue('./fig/combined_bar/{experiment}_vennlikely.pdf'), shared_venn, width=8, height=8, create.dir=T)
 
 
 ## draw unique and shared heatmaps
