@@ -198,7 +198,7 @@ fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara.pdf: src/relative_hea
 ## FIGURE 4	
 fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_pel_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r pel_d1 -c gef_d1 -d sara_d1 -g Drug_Day
-data/DE_results/combined/$(INTRA6P_STEM)_pel_d1_gef_d1_sara_d1.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_gef_d1.pdf
+data/DE_results/combined/$(INTRA6P_STEM)_pel_d1_gef_d1_sara_d1.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_pel_d1.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
