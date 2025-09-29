@@ -108,45 +108,6 @@ fig/DE_results/$(INTRA6H_STEM)_%_full.csv: data/DE_results/$(INTRA6H_STEM).Rds
 DE := $(foreach n, $(ALL_STEMS), $(addprefix data/DE_results/, $(addprefix $n, .Rds)))
 DE_dds: $(DE)
 
-### SUPPLEMENTARY FIGURE GSEA 
-AXENIC_CONDS := gef pel
-INTRA_CONDS := gef_d1 pel_d1 sara_d1
-axenic_gsea := $(addprefix fig/gsea/gsea_, $(addsuffix _$(AXENIC_STEM)_axenic.pdf, $(AXENIC_CONDS)))
-intra_gsea := $(addprefix fig/gsea/gsea_, $(addsuffix _$(INTRA6P_STEM)_intra.pdf, $(INTRA_CONDS)))
-fig/gsea/gsea_%_$(AXENIC_STEM)_axenic.pdf: src/plotGSEA.R data/DE_results/$(AXENIC_STEM).Rds
-	Rscript $< -i data/DE_results/$(AXENIC_STEM)_$*_vs_DMSO_full.csv -g marR sigE kstR -o $*_$(AXENIC_STEM)_axenic
-fig/gsea/gsea_%_$(INTRA6P_STEM)_intra.pdf: src/plotGSEA.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript $< -i data/DE_results/$(INTRA6P_STEM)_$*_vs_DMSO_d1_full.csv -g marR sigE kstR -o $*_$(INTRA6P_STEM)_intra
-fig/gsea/gsea_pel_d1_$(INTRAP_STEM)_intra.pdf: src/plotGSEA.R data/DE_results/$(INTRAP_STEM).Rds
-	Rscript $< -i data/DE_results/$(INTRAP_STEM)_pel_d1_vs_DMSO_d1_full.csv -g marR sigE kstR -o pel_d1_$(INTRAP_STEM)_intra
-gsea: $(axenic_gsea) $(intra_gsea) fig/gsea/gsea_pel_d1_$(INTRAP_STEM)_intra.pdf
-
-
-relative_heatmap_host := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6H_STEM)_,  $(INTRA_CONDS))))
-relative_heatmap_pathogen := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6P_STEM)_,  $(INTRA_CONDS)))) 
-relative_heatmaps: $(relative_heatmap_host) $(relative_heatmap_pathogen)
-## SUPPLEMENTARY FIGURE HOST INFORMATION
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_pel_d1.pdf: src/relative_heatmap.R 
-	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r pel -c gef -d sara -g Drug
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef_d1.pdf: src/relative_heatmap.R
-	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r gef -c pel -d sara -g Drug
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara_d1.pdf: src/relative_heatmap.R
-	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r sara -c pel -d gef -g Drug
-
-## FIGURE 4	
-fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_pel_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r pel_d1 -c gef_d1 -d sara_d1 -g Drug_Day
-fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_gef_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r gef_d1 -c pel_d1 -d sara_d1 -g Drug_Day
-fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r sara_d1 -c pel_d1 -d gef_d1 -g Drug_Day
-
-fig/combined_bar/$(INTRA6P_STEM).pdf: src/combined_bar_venn.R
-	Rscript $< -e $(INTRA6P_STEM) -a pel_d1 -b gef_d1 -c sara_d1 -v DMSO_d1 -g Drug_Day
-fig/combined_bar/$(INTRA6H_STEM).pdf: src/combined_bar_venn.R
-	Rscript $< -e $(INTRA6H_STEM) -a pel -b gef -c sara -v DMSO -g Drug
-
-combined_bar: fig/combined_bar/$(INTRA6P_STEM).pdf fig/combined_bar/$(INTRA6H_STEM).pdf
 
 
 ## FIGURE 1 CHEMICAL INFO
@@ -215,10 +176,60 @@ fig/abx-dose/pca_all_1_2.pdf: fig/abx-dose/lap-var_upset.pdf
 	fi
 
 ## FIGURE 4 INTRACELLULAR 
-fig4: $(relative_heatmaps_pathogen) $(relative_heatmaps_host) $(iMod_enrich_unique) fig/growth/RNAseq_lux.pdf
+fig4: $(relative_heatmaps_pathogen) $(relative_heatmaps_host) iMod_enrich_unique fig/growth/RNAseq_lux.pdf
 
 fig/growth/RNAseq_lux.pdf: src/plotDay1.R #data/lux_data/pel-clean_data.xlsx
 	Rscript $< 
+
+
+
+relative_heatmap_host := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6H_STEM)_,  $(INTRA_CONDS))))
+relative_heatmap_pathogen := $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(INTRA6P_STEM)_,  $(INTRA_CONDS)))) 
+relative_heatmaps: $(relative_heatmap_host) $(relative_heatmap_pathogen)
+## SUPPLEMENTARY FIGURE HOST INFORMATION
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_pel_d1.pdf: src/relative_heatmap.R 
+	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r pel -c gef -d sara -g Drug
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef_d1.pdf: src/relative_heatmap.R
+	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r gef -c pel -d sara -g Drug
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara_d1.pdf: src/relative_heatmap.R
+	Rscript $< -i $(INTRA6H_STEM) -v DMSO -r sara -c pel -d gef -g Drug
+
+## FIGURE 4	
+fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_pel_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
+	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r pel_d1 -c gef_d1 -d sara_d1 -g Drug_Day
+fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_gef_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
+	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r gef_d1 -c pel_d1 -d sara_d1 -g Drug_Day
+fig/relative_heatmap/relative_heatmap_$(INTRA6P_STEM)_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6P_STEM).Rds
+	Rscript $< -i $(INTRA6P_STEM) -v DMSO_d1 -r sara_d1 -c pel_d1 -d gef_d1 -g Drug_Day
+
+fig/combined_bar/$(INTRA6P_STEM).pdf: src/combined_bar_venn.R
+	Rscript $< -e $(INTRA6P_STEM) -a pel_d1 -b gef_d1 -c sara_d1 -v DMSO_d1 -g Drug_Day
+data/DE_results/$(INTRA6P_STEM)_%_d1_unique.txt: fig/combined_bar/$(INTRA6P_STEM).pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+data/DE_results/$(INTRA6P_STEM)_likely_shared.txt: fig/combined_bar/$(INTRA6P_STEM).pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+
+fig/combined_bar/$(INTRA6H_STEM).pdf: src/combined_bar_venn.R
+	Rscript $< -e $(INTRA6H_STEM) -a pel -b gef -c sara -v DMSO -g Drug
+data/DE_results/$(INTRA6H_STEM)_%_unique.txt: fig/combined_bar/$(INTRA6H_STEM).pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+
+data/DE_results/$(INTRA6H_STEM)_likely_shared.txt: fig/combined_bar/$(INTRA6H_STEM).pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+
+combined_bar: fig/combined_bar/$(INTRA6P_STEM).pdf fig/combined_bar/$(INTRA6H_STEM).pdf
 
 ### SUPPLEMENTARY FIGURE
 phago_plots := $(addprefix fig/time-dependent/phago_, $(addsuffix _hm.pdf, $(addprefix $(INTRA6P_STEM)_, $(INTRA_CONDS))))
@@ -234,8 +245,21 @@ fig/regulators/sigma_%_d1.pdf: src/plotRegulators.R
 regulators_plot := $(addprefix fig/regulators/sigma_, $(addsuffix .pdf, $(INTRA_CONDS)))
 sfig_regulators: $(regulators_plot)
 
+### SUPPLEMENTARY FIGURE GSEA 
+AXENIC_CONDS := gef pel
+INTRA_CONDS := gef_d1 pel_d1 sara_d1
+axenic_gsea := $(addprefix fig/gsea/gsea_, $(addsuffix _$(AXENIC_STEM)_axenic.pdf, $(AXENIC_CONDS)))
+intra_gsea := $(addprefix fig/gsea/gsea_, $(addsuffix _$(INTRA6P_STEM)_intra.pdf, $(INTRA_CONDS)))
+fig/gsea/gsea_%_$(AXENIC_STEM)_axenic.pdf: src/plotGSEA.R data/DE_results/$(AXENIC_STEM).Rds
+	Rscript $< -i data/DE_results/$(AXENIC_STEM)_$*_vs_DMSO_full.csv -g marR sigE kstR -o $*_$(AXENIC_STEM)_axenic
+fig/gsea/gsea_%_$(INTRA6P_STEM)_intra.pdf: src/plotGSEA.R data/DE_results/$(INTRA6P_STEM).Rds
+	Rscript $< -i data/DE_results/$(INTRA6P_STEM)_$*_vs_DMSO_d1_full.csv -g marR sigE kstR -o $*_$(INTRA6P_STEM)_intra
+fig/gsea/gsea_pel_d1_$(INTRAP_STEM)_intra.pdf: src/plotGSEA.R data/DE_results/$(INTRAP_STEM).Rds
+	Rscript $< -i data/DE_results/$(INTRAP_STEM)_pel_d1_vs_DMSO_d1_full.csv -g marR sigE kstR -o pel_d1_$(INTRAP_STEM)_intra
+gsea: $(axenic_gsea) $(intra_gsea) fig/gsea/gsea_pel_d1_$(INTRAP_STEM)_intra.pdf
+
 ## FIGURE 5 AXENIC EFFECTS
-fig5: fig/DE_results/$(AXENIC_STEM)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(AXENIC_STEM)_volcano_gef_vs_DMSO.pdf $(axenic_joint_heatmaps) $(iMod_enrich_axenic)	
+fig5: fig/DE_results/$(AXENIC_STEM)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(AXENIC_STEM)_volcano_gef_vs_DMSO.pdf $(axenic_joint_heatmaps) iMod_enrich_axenic	
 
 axenic_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(AXENIC_STEM).pdf, $(AXENIC_CONDS)))
 abx_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(ABX_STEM).pdf, $(AXENIC_CONDS)))
@@ -249,7 +273,7 @@ fig/axenic_heatmap/axenic_heatmap_%_d1_$(ABX_STEM).pdf: src/axenic_heatmap.R dat
 fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf: src/axenic_heatmap.R
 	Rscript $< -i $(INTRA6P_STEM) -a $(INTRAP_STEM) -c pel_d1 -d pel_d1 -v DMSO_d1 -w DMSO_d1 -g Drug_Day -j Drug_Day
 
-fig/relative_heatmap/%_intra-axenic_allcomps_iModulon.pdf: src/geneListToGSEA.R
+fig/relative_heatmap/%_intra-axenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt
 	Rscript $< -c $* -m intraaxenic -e $(INTRA6P_STEM) $(AXENIC_STEM)
 
 fig/relative_heatmap/%_single_iModulon.pdf: src/geneListToGSEA.R
@@ -257,7 +281,7 @@ fig/relative_heatmap/%_single_iModulon.pdf: src/geneListToGSEA.R
 
 iMod_enrich_axenic: fig/relative_heatmap/pel_d1_intra-axenic_allcomps_iModulon.pdf fig/relative_heatmap/gef_d1_intra-axenic_allcomps_iModulon.pdf
 	
-fig/relative_heatmap/all_drugs_iModulon.pdf: src/geneListToGSEA.R
+fig/relative_heatmap/all_drugs_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt 
 	Rscript $< -c all -m drugs -n 320 
 
 iMod_enrich_unique: fig/relative_heatmap/all_drugs_iModulon.pdf
