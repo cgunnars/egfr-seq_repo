@@ -23,7 +23,7 @@ plotGSEA <- function(fc, gene_lists, outname) {
                     scale_y_continuous(limits = c(-1, 1))
                 )
     figs      <- plot_grid(plotlist=figs, ncol = length(figs))
-    lapply(c('pdf', 'svg'), function(ext) ggsave(glue('./fig/gsea/gsea_{outname}.{ext}'), figs, width=4*length(genesets), height=4))
+    lapply(c('pdf', 'svg'), function(ext) ggsave(glue('./fig/gsea/gsea_{outname}.{ext}'), figs, width=4*length(genesets), height=4, create.dir=T))
     
 }
 
