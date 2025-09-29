@@ -52,9 +52,9 @@ conditions = c(ref1, ref2, ref3, ctrl)
 
 
 # read in categorization tables for each condition's DEGs
-combined_1 <- read.csv(glue('{data_dir}/{experiment}_{ref1}_{ref2}_{ref3}.csv'))
-combined_2 <- read.csv(glue('{data_dir}/{experiment}_{ref2}_{ref1}_{ref3}.csv'))
-combined_3 <- read.csv(glue('{data_dir}/{experiment}_{ref3}_{ref1}_{ref2}.csv'))
+combined_1 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref1}_{ref2}_{ref3}.csv'))
+combined_2 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref2}_{ref1}_{ref3}.csv'))
+combined_3 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref3}_{ref1}_{ref2}.csv'))
 combined_all <- list(combined_1, combined_2, combined_3)
 
 
