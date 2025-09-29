@@ -343,7 +343,7 @@ combined_intraabx := $(addprefix data/DE_results/combined/combined_intraaxenic_,
 combined_intraaxenic_tables: $(combined_intraaxenic) $(combined_intraabx)
 
 
-fig/relative_heatmap/%_intraaxenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_{AXENIC_STEM}.csv
+fig/relative_heatmap/%_intraaxenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(INTRA6P_STEM)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_$(AXENIC_STEM).csv
 	Rscript $< -c $* -m intraaxenic -e $(INTRA6P_STEM) $(AXENIC_STEM)
 data/enrich/pel_d1_intraaxenic_%.csv: fig/relative_heatmap/pel_d1_intraaxenic_allcomps_iModulon.pdf
 	@if test -f $@; then :; else\
