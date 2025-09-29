@@ -336,7 +336,6 @@ fig/heatmap/joint_axenic-6donor_pel.pdf: src/plotJointHeatmap.R data/DE_results/
 heatmaps: fig/heatmap/20240502_pel-timecourse-6donor_pel-early.pdf fig/heatmap/20240502_pel-timecourse-6donor_all-early.pdf fig/heatmap/$(INTRA6H_STEM)_all-early.pdf fig/heatmap/20240502_pel-timecourse-6donor_EGFR-early.pdf fig/heatmap/20240502_pel-timecourse-6donor_gef-early.pdf fig/heatmap/20240502_pel-timecourse-6donor_timecourse.pdf fig/heatmap/20240502_pel-timecourse-6donor_timecourse-pel.pdf
 abx_heatmaps: fig/heatmap/$(ABX_STEM)_lap.pdf fig/heatmap/$(ABX_STEM)_var.pdf fig/heatmap/$(ABX_STEM)_dose.pdf
 
-joint_heatmaps: fig/heatmap/joint_axenic-6donor_pel.pdf
 
 ### BIPLOTS WITH GENE ANNOTATIONS
 
