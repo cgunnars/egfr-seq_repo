@@ -318,7 +318,7 @@ abx_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffi
 joint_heatmaps: $(axenic_joint_heatmaps) $(abx_joint_heatmaps) fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(AXENIC_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(AXENIC_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(AXENIC_STEM) -c $*_d1 -d $* -v DMSO_d1 -w DMSO -g Drug_Day -j Drug
-data/DE_results/combined/combined_intraaxenic_%_$(AXENIC_STEM).csv: fig/axenic_heatmap/axenic_heatmap_%_d1_$(AXENIC_STEM).pdf
+data/DE_results/combined/combined_intraaxenic_%_$(AXENIC_STEM).csv: fig/axenic_heatmap/axenic_heatmap_%_$(AXENIC_STEM).pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
@@ -326,7 +326,7 @@ data/DE_results/combined/combined_intraaxenic_%_$(AXENIC_STEM).csv: fig/axenic_h
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(ABX_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(ABX_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(ABX_STEM) -c $*_d1 -d $*_25 -v DMSO_d1 -w $*_5 -g Drug_Day -j Drug_Dose
 
-data/DE_results/combined/combined_intraaxenic_%_$(ABX_STEM).csv: fig/axenic_heatmap/axenic_heatmap_%_d1_$(ABX_STEM).pdf
+data/DE_results/combined/combined_intraaxenic_%_$(ABX_STEM).csv: fig/axenic_heatmap/axenic_heatmap_%_$(ABX_STEM).pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
