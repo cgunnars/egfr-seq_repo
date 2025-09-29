@@ -31,11 +31,9 @@ addDir <- function(degs) {
 
 parser <- ArgumentParser() ## TODO: extensibility for n conditions 
 parser$add_argument('-e', type='character', nargs=1) # experiment name
-parser$add_argument('-a', type='character', nargs=1) # condition 1
-parser$add_argument('-b', type='character', nargs=1) # condition 2
-parser$add_argument('-c', type='character', nargs=1) # condition 3
+parser$add_argument('-c', type='character', nargs=3) # condition 1, condition 2, condition 3
 parser$add_argument('-g', type='character', nargs=1) # group (aka. Drug, Day, etc)
-parser$add_argument('-v', type='character', nargs=1) # control group, e.g. vehicle
+parser$add_argument('-r', type='character', nargs=1) # control group, e.g. vehicle
 
 args <- parser$parse_args()
 
@@ -43,12 +41,12 @@ data_dir   = './data/DE_results'
 experiment = args$e #'20240502_pel-timecourse-6donor_pathogen'
 group      = args$g
 
-ctrl       = args$v #'DMSO_d1'
-ref1       = args$a #'pel_d1'
-ref2       = args$b #'gef_d1'
-ref3       = args$c #'sara_d1'
-refs_all   = c(ref1, ref2, ref3)
-conditions = c(ref1, ref2, ref3, ctrl)
+ctrl       = args$r #'DMSO_d1'
+refs_all   = args$c 
+ref1       = refs_all[[1]] #'pel_d1'
+ref2       = refs_all[[2]] #'gef_d1'
+ref3       = refs_all[[3]] #'sara_d1'
+conditions = c(refs_all, ctrl)
 
 
 # read in categorization tables for each condition's DEGs
