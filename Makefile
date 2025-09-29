@@ -12,7 +12,7 @@ INTRAAXENIC_CONDS := gef_d1 pel_d1
 ALL_STEMS := $(AXENIC_STEM) $(ABX_STEM) $(INTRA6H_STEM) $(INTRA6P_STEM) $(INTRAP_STEM)
 
 figs: fig1 fig2 fig3 fig4 fig5
-sfigs: sfig_dose-upset sfig_regulators sfig_phago sfig_degs-method sfig_host
+sfigs: sfig_dose-upset sfig_regulators sfig_phago sfig_degmethod sfig_host
 tables: DE_tables combined_host_tables combined_pathogen_tables 
 
 ### PREPROCESSING into a standard format
@@ -54,7 +54,7 @@ fig/QC/%_post-heatmap.pdf: data/clean_dds/%.Rds
 		rm -f $<; \
 		make $<; \
 	fi
-fig/QC/%_pre-heatmap.pdf:
+fig/QC/%_pre-heatmap.pdf: data/clean_dds/%.Rds
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
@@ -90,7 +90,7 @@ fig/DE_results/$(INTRA6H_STEM)_volcano_%.pdf: data/DE_results/$(INTRA6H_STEM).Rd
 		rm -f $<; \
 		make $<; \
 	fi
-data/DE_results/$(ABX_STEM)_%_full.csv.pdf: data/DE_results/$(ABX_STEM).Rds 
+data/DE_results/$(ABX_STEM)_%_full.csv: data/DE_results/$(ABX_STEM).Rds 
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
@@ -149,7 +149,6 @@ fig1: fig/chem_info/tanimoto.svg fig/chem_info/EGFR-spec-heatmap.svg fig/chem_in
 ## FIGURE 2 ANTIBIOTIC EFFECTS
 fig2: fig/abx-dose/pca_all_1_2.pdf fig/abx-dose/var-heatmap.pdf fig/abx-dose/lap-heatmap.pdf  
 fig3: fig/abx-dose/pca_nolap_1_2.pdf fig/abx-dose/pca_nolap_1_3.pdf fig/abx-dose/pca_nolap_2_3.pdf fig/abx-dose/non-lap_loadings.pdf  fig/abx-dose/pel-dose-heatmap.pdf fig/abx-dose/gef-dose-heatmap.pdf  
-
 sfig_dose-upset: fig/abx-dose/lap-var_upset.pdf fig/abx-dose/lap_upset.pdf fig/abx-dose/var_upset.pdf
 
 fig/abx-dose/lap-var_upset.pdf: src/abx-dose.R data/DE_results/$(ABX_STEM).Rds
