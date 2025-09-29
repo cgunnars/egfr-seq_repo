@@ -312,16 +312,16 @@ data/enrich/gsea_%.csv: fig/gsea/gsea_%.pdf
 gsea: $(axenic_gsea) $(intra_gsea) fig/gsea/gsea_pel_d1_$(INTRAP_STEM)_intra.pdf
 
 ### SUPPLEMENTARY FIGURE HOST INFORMATION
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_pel_gef_sara.pdf: src/relative_heatmap.R 
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_pel_gef_sara.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6H_STEM).Rds 
 	Rscript $< -i $(INTRA6H_STEM) -r DMSO -c pel gef sara -g Drug
-data/DE_results/combined/$(INTRA6H_STEM)_%.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_%.pdf
+data/DE_results/combined/$(INTRA6H_STEM)_%.csv: fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_%.pdf 
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef_pel_sara.pdf: src/relative_heatmap.R
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_gef_pel_sara.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6H_STEM).Rds 
 	Rscript $< -i $(INTRA6H_STEM) -r DMSO -c gef pel sara -g Drug
-fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara_pel_gef.pdf: src/relative_heatmap.R
+fig/relative_heatmap/relative_heatmap_$(INTRA6H_STEM)_sara_pel_gef.pdf: src/relative_heatmap.R data/DE_results/$(INTRA6H_STEM).Rds 
 	Rscript $< -i $(INTRA6H_STEM) -r DMSO -c sara pel gef -g Drug
 
 
@@ -334,26 +334,16 @@ abx_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffi
 joint_heatmaps: $(axenic_joint_heatmaps) $(abx_joint_heatmaps) fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(AXENIC_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(AXENIC_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(AXENIC_STEM) -c $*_d1 -d $* -v DMSO_d1 -w DMSO -g Drug_Day -j Drug
-data/DE_results/combined/combined_intraaxenic_%_$(AXENIC_STEM).csv: fig/axenic_heatmap/axenic_heatmap_%_$(AXENIC_STEM).pdf
+data/DE_results/combined/combined_intraaxenic_%.csv: fig/axenic_heatmap/axenic_heatmap_%.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(ABX_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(ABX_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(ABX_STEM) -c $*_d1 -d $*_25 -v DMSO_d1 -w $*_5 -g Drug_Day -j Drug_Dose
-
-data/DE_results/combined/combined_intraaxenic_%_$(ABX_STEM).csv: fig/axenic_heatmap/axenic_heatmap_%_$(ABX_STEM).pdf
-	@if test -f $@; then :; else\
-		rm -f $<; \
-		make $<; \
-	fi
 fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf: src/axenic_heatmap.R data/DE_results/$(INTRAP_STEM).Rds
 	Rscript $< -i $(INTRA6P_STEM) -a $(INTRAP_STEM) -c pel_d1 -d pel_d1 -v DMSO_d1 -w DMSO_d1 -g Drug_Day -j Drug_Day
-data/DE_results/combined/combined_intraaxenic_pel_d1_$(INTRAP_STEM).csv: fig/axenic_heatmap/axenic_heatmap_pel_d1_$(INTRAP_STEM).pdf
-	@if test -f $@; then :; else\
-		rm -f $<; \
-		make $<; \
-	fi
+
 combined_intraaxenic := $(addprefix data/DE_results/combined/combined_intraaxenic_, $(addsuffix _$(AXENIC_STEM).csv, $(INTRAAXENIC_CONDS)))
 combined_intraabx := $(addprefix data/DE_results/combined/combined_intraaxenic_, $(addsuffix _$(ABX_STEM).csv, $(INTRAAXENIC_CONDS)))
 combined_intraaxenic_tables: $(combined_intraaxenic) $(combined_intraabx)
@@ -396,90 +386,15 @@ sfig_degmethod_intra: fig/deg-method/sfig6a_pel_intra.pdf fig/deg-method/sfig6b_
 sfig_degmethod_axenic: fig/deg-method/sfig6a_pel_axenic.pdf
 sfig_degmethod: sfig_degmethod_intra sfig_degmethod_axenic
 
-fig/deg-method/sfig6a_pel_intra.pdf: src/testDEMethods.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript $< -i data/DE_results/$(INTRA6P_STEM).Rds -c Drug_Day_pel_d1_vs_DMSO_d1 -o pel_intra
-fig/deg-method/sfig6a_pel_axenic.pdf: src/testDEMethods.R data/DE_results/$(AXENIC_STEM).Rds
-	Rscript $< -i $(word 2, $^) -c Drug_pel_vs_DMSO -o pel_axenic
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-###### DEPRECATED #####
-## Calculate host-pathogen correlations
-data/corr_results/20240502_pel-timecourse-6donor_corr.csv: src/plotCorr.R data/clean_dds/$(INTRA6P_STEM).Rds data/clean_dds/$(INTRA6H_STEM).Rds 
-	Rscript src/plotCorr.R -i $(word 2, $^) $(word 3, $^) -m Drug Day Donor Replicate -c gef_d1_vs_DMSO_d1 pel_d1_vs_DMSO_d1 sara_d1_vs_DMSO_d1 -d gef_vs_DMSO pel_vs_DMSO sara_vs_DMSO
-corr: data/corr_results/20240502_pel-timecourse-6donor_corr.csv
-
-## Boiler plate heatmaps
-fig/heatmap/20240502_pel-timecourse-6donor_pel-early.pdf: src/plotHeatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c pel_d1_vs_DMSO_d1 -s pel_d1 DMSO_d1 phago_4h -o pel-early
-
-fig/heatmap/20240502_pel-timecourse-6donor_gef-early.pdf: src/plotHeatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c gef_d1_vs_DMSO_d1 -s gef_d1 DMSO_d1 phago_4h -o gef-early
-
-fig/heatmap/20240502_pel-timecourse-6donor_sara-early.pdf: src/plotHeatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c sara_d1_vs_DMSO_d1 -s sara_d1 DMSO_d1 phago_4h -o sara-early
-
-fig/heatmap/20240502_pel-timecourse-6donor_all-early.pdf: src/plotHeatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c pel_d1_vs_DMSO_d1 -s pel_d1 DMSO_d1 sara_d1 gef_d1 -o all-early
-
-fig/heatmap/20240502_pel-timecourse-6donor_EGFR-early.pdf: src/plotHeatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c pel_d1_vs_DMSO_d1 gef_d1_vs_DMSO_d1 -s pel_d1 DMSO_d1 gef_d1 -o EGFR-early
-
-fig/heatmap/20240502_pel-timecourse-6donor_timecourse.pdf: src/plotHeatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c DMSO_d1_vs_phago_4h DMSO_d3_vs_DMSO_d1 DMSO_d2_vs_DMSO_d1 -s DMSO_d3 DMSO_d2 DMSO_d1 phago_4h -o timecourse
-
-fig/heatmap/20240502_pel-timecourse-6donor_timecourse-pel.pdf: src/plotHeatmap.R data/DE_results/$(INTRA6P_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c DMSO_d1_vs_phago_4h pel_d1_vs_phago_4h pel_d3_vs_DMSO_d3 pel_d2_vs_DMSO_d2 pel_d1_vs_DMSO_d1 -s DMSO_d3 DMSO_d2 DMSO_d1 pel_d3 pel_d2 pel_d1 phago_4h -o timecourse-pel
-
-fig/heatmap/$(INTRA6H_STEM)_all-early.pdf: src/plotHeatmap.R data/DE_results/$(INTRA6H_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c pel_vs_DMSO gef_vs_DMSO sara_vs_DMSO -s pel sara gef DMSO -o host_all-early
-
-fig/heatmap/$(ABX_STEM)_lap.pdf: src/plotHeatmap.R data/DE_results/$(ABX_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c lap_5_vs_gef_5 lap_5_vs_pel_5 lap_25_vs_gef_25 lap_25_vs_pel_25 lap_25_vs_lap_5 -s lap_5 lap_25 gef_5 gef_25 pel_5 pel_25 -o lap
-fig/heatmap/$(ABX_STEM)_var.pdf: src/plotHeatmap.R data/DE_results/$(ABX_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c var_5_vs_gef_5 var_5_vs_pel_5 var_25_vs_gef_25 var_25_vs_pel_25 var_25_vs_var_5 -s var_5 var_25 gef_5 gef_25 pel_5 pel_25 -o var
-fig/heatmap/$(ABX_STEM)_dose.pdf: src/plotHeatmap.R data/DE_results/$(ABX_STEM).Rds
-	Rscript src/plotHeatmap.R -i $(word 2, $^) -c var_25_vs_var_5 gef_25_vs_gef_5 pel_25_vs_pel_5 -s var_5 var_25 gef_5 gef_25 pel_25 pel_5 lap_5 lap_25 -o dose
-
-
-fig/heatmap/joint_axenic-6donor_pel.pdf: src/plotJointHeatmap.R data/DE_results/$(INTRA6P_STEM).Rds data/DE_results/$(AXENIC_STEM)_pel_vs_DMSO_full.csv
-	Rscript src/plotJointHeatmap.R -i $(word 2, $^) -c pel_d1_vs_DMSO_d1 -s pel_d1 DMSO_d1 -d $(word 3, $^) -o joint_axenic-6donor_pel
-
-heatmaps: fig/heatmap/20240502_pel-timecourse-6donor_pel-early.pdf fig/heatmap/20240502_pel-timecourse-6donor_all-early.pdf fig/heatmap/$(INTRA6H_STEM)_all-early.pdf fig/heatmap/20240502_pel-timecourse-6donor_EGFR-early.pdf fig/heatmap/20240502_pel-timecourse-6donor_gef-early.pdf fig/heatmap/20240502_pel-timecourse-6donor_timecourse.pdf fig/heatmap/20240502_pel-timecourse-6donor_timecourse-pel.pdf
-abx_heatmaps: fig/heatmap/$(ABX_STEM)_lap.pdf fig/heatmap/$(ABX_STEM)_var.pdf fig/heatmap/$(ABX_STEM)_dose.pdf
-
-
-### BIPLOTS WITH GENE ANNOTATIONS
-
-fig/biplot/joint_axenic-6donor_pel.pdf: src/plotbiFC.R data/DE_results/$(INTRA6P_STEM)_pel_d1_vs_DMSO_d1_full.csv data/DE_results/$(AXENIC_STEM)_pel_vs_DMSO_full.csv 
-	Rscript src/plotbiFC.R -i $(word 2, $^) -d $(word 3, $^) -o joint_axenic-6donor_pel
-fig/biplot/joint_abx-6donor_pel.pdf: src/plotbiFC.R data/DE_results/$(INTRA6P_STEM)_pel_d1_vs_DMSO_d1_full.csv data/DE_results/$(ABX_STEM)_pel_25_vs_pel_5_full.csv
-	Rscript src/plotbiFC.R -i $(word 2, $^) -d $(word 3, $^) -o joint_abx-6donor_pel
-fig/biplot/joint_abx-6donor_gef.pdf: src/plotbiFC.R data/DE_results/$(INTRA6P_STEM)_gef_d1_vs_DMSO_d1_full.csv data/DE_results/$(ABX_STEM)_gef_25_vs_gef_5_full.csv
-	Rscript src/plotbiFC.R -i $(word 2, $^) -d $(word 3, $^) -o joint_abx-6donor_gef
-fig/biplot/joint_axenic-6donor_gef.pdf: src/plotbiFC.R data/DE_results/$(INTRA6P_STEM)_gef_d1_vs_DMSO_d1_full.csv data/DE_results/$(AXENIC_STEM)_pel_vs_DMSO_full.csv
-	Rscript src/plotbiFC.R -i $(word 2, $^) -d $(word 3, $^) -o joint_axenic-6donor_gef
-fig/biplot/joint_intracellular_gef-pel.pdf: src/plotbiFC.R data/DE_results/$(INTRA6P_STEM)_pel_d1_vs_DMSO_d1_full.csv data/DE_results/$(INTRA6P_STEM)_gef_d1_vs_DMSO_d1_full.csv
-	Rscript src/plotbiFC.R -i $(word 2, $^) -d $(word 3, $^) -o joint_intracellular_gef-pel
-
-
-fig/biplot/joint_phago_%.pdf: src/plotbiFC.R data/DE_results/$(INTRA6P_STEM)_%_d1_vs_phago_4h_full.csv data/DE_results/$(INTRA6P_STEM)_DMSO_d1_vs_phago_4h_full.csv
-	Rscript src/plotbiFC.R -i $(word 2, $^) -d $(word 3, $^) -o joint_phago_$*
-biplots: fig/biplot/joint_axenic-6donor_pel.pdf fig/biplot/joint_abx-6donor_pel.pdf fig/biplot/joint_abx-6donor_gef.pdf fig/biplot/joint_axenic-6donor_gef.pdf fig/biplot/joint_intracellular_gef-pel.pdf fig/biplot/joint_phago_gef.pdf fig/biplot/joint_phago_pel.pdf fig/biplot/join_phago_gef.pdf
+fig/deg-method/sfig6a_%.pdf: src/testDEMethods.R data/DE_results/$(INTRA6P_STEM).Rds
+	Rscript $< -i data/DE_results/$(INTRA6P_STEM).Rds -c Drug_Day_pel_d1_vs_DMSO_d1 -o $*
+fig/deg-method/sfig6b_%.pdf: fig/deg-method/sfig6a_%.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+fig/deg-method/sfig6c_%.pdf: fig/deg-method/sfig6a_%.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
