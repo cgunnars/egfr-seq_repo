@@ -1,0 +1,14 @@
+pel_25_vs_pel_5
+gef_25_vs_gef_5
+var_25_vs_var_5
+lap_25_vs_lap_5
+pel_25_vs_gef_25
+pel_5_vs_gef_5
+lap_25_vs_pel_25
+lap_5_vs_pel_5
+lap_25_vs_gef_25
+lap_5_vs_gef_5
+var_25_vs_pel_25
+var_5_vs_pel_5
+var_25_vs_gef_25
+var_5_vs_gef_5
