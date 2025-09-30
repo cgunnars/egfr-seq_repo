@@ -16,34 +16,43 @@ intra6p_design := Drug Day
 intra6h_design := Drug
 intrap_design := Drug Day
 
+axenic_biorep=Replicate
+intra_biorep=Donor
+
 all_stems := $(axenic_stem) $(abx_stem) $(intra6h_stem) $(intra6p_stem) $(intrap_stem)
 
 figs: fig1 fig2 fig3 fig4 fig5
 sfigs: sfig_dose-upset sfig_regulators sfig_phago sfig_degmethod relative_heatmap_host 
 tables: DE_tables combined_host_tables combined_pathogen_tables 
 
-### PREPROCESSING into a standard format
-data/raw_dds/$(abx_stem).Rds: src/loadData.R data/raw_counts/$(abx_stem).tsv
-	Rscript $< -i $(word 2, $^) -l data/gene_info/H37Rv_gene-lengths.csv --pathogen -s $(abx_design) Replicate -d $(abx_design) 
+clean_env: 
+	rm -r fig/*/*.pdf
 
-data/raw_dds/$(axenic_stem).Rds: src/loadData.R data/raw_counts/$(axenic_stem).tsv
-	Rscript $< -i $(word 2, $^) -l data/gene_info/H37Rv_gene-lengths.csv --pathogen -s $(axenic_design) Replicate -d $(axenic_design)
+########### 00 PREPROCESSING into a standard format ###########
+data/raw_dds/$(abx_stem).Rds: src/loadData.R data/raw_counts/$(abx_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
+	Rscript $< -i $(word 2, $^) -l $(word 3, $^) --pathogen -s $(abx_design) $(axenic_biorep) -d $(abx_design) 
 
-data/raw_dds/$(intra6p_stem).Rds: src/loadData.R data/raw_counts/$(intra6p_stem).tsv
-	Rscript $< -i $(word 2, $^) -l data/gene_info/H37Rv_gene-lengths.csv --pathogen -s $(intra6p_design) Donor Replicate -d $(intra6p_design)
+data/raw_dds/$(axenic_stem).Rds: src/loadData.R data/raw_counts/$(axenic_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
+	Rscript $< -i $(word 2, $^) -l $(word 3, $^) --pathogen -s $(axenic_design) $(axenic_biorep) -d $(axenic_design)
 
+data/raw_dds/$(intra6p_stem).Rds: src/loadData.R data/raw_counts/$(intra6p_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
+	Rscript $< -i $(word 2, $^) -l $(word 3, $^) --pathogen -s $(intra6p_design) $(intra_biorep) Replicate -d $(intra6p_design)
+
+# pilot run has only one donor, use "Well" argument to avoid collapsing as a technical replicate"
+data/raw_dds/$(intrap_stem).Rds: src/loadData.R data/raw_counts/$(intrap_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
+	Rscript $< -i $(word 2, $^) -l $(word 3, $^) --pathogen -s $(intrap_design) Well -d $(intrap_design)	
+
+# for host, no need to specify -l (locus file) and --pathogen flags
 data/raw_dds/$(intra6h_stem).Rds: src/loadData.R data/raw_counts/$(intra6h_stem).Rds
-	Rscript $< -i $(word 2, $^) -s $(intra6h_design) Donor Replicate -d $(intra6h_design) -m Day d1
+	Rscript $< -i $(word 2, $^) -s $(intra6h_design) $(intra_biorep) Replicate -d $(intra6h_design) -m Day d1
 
-data/raw_dds/$(intrap_stem).Rds: src/loadData.R data/raw_counts/$(intrap_stem).tsv
-	Rscript $< -i $(word 2, $^) -l data/gene_info/H37Rv_gene-lengths.csv --pathogen -s $(intrap_design) Well -d $(intrap_design)	
 raw := $(foreach n, $(all_stems), $(addprefix data/raw_dds/, $(addprefix $n, .Rds)))
 raw_dds: $(raw)
 
-### RUN QC
-data/clean_dds/$(abx_stem).Rds: src/runQC.R data/raw_dds/$(abx_stem).Rds
+########### 01 RUN QC ##########
+data/clean_dds/$(abx_stem).Rds: src/proc/runQC.R.R data/raw_dds/$(abx_stem).Rds
 	Rscript $< -i $(word 2, $^) -d gef_25_S15 pel_5_S13 pel_25_S12
-data/clean_dds/%.Rds: src/runQC.R data/raw_dds/%.Rds
+data/clean_dds/%.Rds: src/proc/runQC.R.R data/raw_dds/%.Rds
 	Rscript $< -i $(word 2, $^)
 ### also generates QC plots and plots of expression similarity
 fig/QC/%_post.pdf: data/clean_dds/%.Rds
@@ -68,23 +77,25 @@ fig/QC/%_pre-heatmap.pdf: data/clean_dds/%.Rds
 	fi
 clean_dds := $(foreach n, $(all_stems), $(addprefix data/clean_dds/, $(addprefix $(n), .Rds)))
 
-data/clean_dds/$(intrap_stem)_df.csv: src/makeGeneDf.R data/clean_dds/$(intrap_stem).Rds
-	Rscript $< -i $(intrap_stem) -s $(intrap_design) Donor
-data/clean_dds/$(intra6p_stem)_df.csv: src/makeGeneDf.R data/clean_dds/$(intra6p_stem).Rds
-	Rscript $< -i $(intra6p_stem) -s $(intra6p_design) Donor
-data/clean_dds/$(intra6h_stem)_df.csv: src/makeGeneDf.R data/clean_dds/$(intra6h_stem).Rds
-	Rscript $< -i $(intra6h_stem) -s $(intra6h_design) Donor
-data/clean_dds/$(axenic_stem)_df.csv: src/makeGeneDf.R data/clean_dds/$(axenic_stem).Rds
-	Rscript $< -i $(axenic_stem) -s $(axenic_design) Replicate 
-data/clean_dds/$(abx_stem)_df.csv: src/makeGeneDf.R data/clean_dds/$(abx_stem).Rds
-	Rscript $< -i $(abx_stem) -s $(abx_design) Replicate 
+########### 02 GENERATE DATAFRAMES FOR PLOTTING ############
+## Generate -- last argument to -s is the name of the biological replicate
+data/clean_dds/$(intrap_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(intrap_stem).Rds
+	Rscript $< -i $(intrap_stem) -s $(intrap_design) $(intra_biorep) 
+data/clean_dds/$(intra6p_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(intra6p_stem).Rds
+	Rscript $< -i $(intra6p_stem) -s $(intra6p_design) $(intra_biorep)
+data/clean_dds/$(intra6h_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(intra6h_stem).Rds
+	Rscript $< -i $(intra6h_stem) -s $(intra6h_design) $(intra_biorep)
+data/clean_dds/$(axenic_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(axenic_stem).Rds
+	Rscript $< -i $(axenic_stem) -s $(axenic_design) $(axenic_biorep)
+data/clean_dds/$(abx_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(abx_stem).Rds
+	Rscript $< -i $(abx_stem) -s $(abx_design) $(axenic_biorep) 
 clean_df := $(clean_dds:%.Rds=%_df.csv)
 
 clean: $(clean_df) $(clean_dds) 
 
 
-### RUN DE 
-data/DE_results/%.Rds: src/runDE.R data/clean_dds/%.Rds data/comparisons/comparisons_%.txt
+########### 03 RUN DE ########### 
+data/DE_results/%.Rds: src/proc/runDE.R.R data/clean_dds/%.Rds data/comparisons/comparisons_%.txt
 	Rscript $< -i $(word 2, $^) -c $(word 3, $^)
 ## also generates volcano plot and DE results table
 fig/DE_results/$(abx_stem)_volcano_%.pdf: data/DE_results/$(abx_stem).Rds #must exist in comparisons.txt to rebuild correctly
@@ -144,7 +155,6 @@ abx_de := $(foreach n, $(shell cat data/comparisons/comparisons_$(abx_stem).txt)
 6h_de := $(foreach n, $(shell cat data/comparisons/comparisons_$(intra6h_stem).txt), $(addprefix data/DE_results/$(intra6h_stem)_, $(addsuffix _full.csv, $n)))
 p_de := $(foreach n, $(shell cat data/comparisons/comparisons_$(intrap_stem).txt), $(addprefix data/DE_results/$(intrap_stem)_, $(addsuffix _full.csv, $n)))
 DE_tables: $(axenic_de) $(abx_de) $(6p_de) $(6h_de) $(p_de)
-
 ## DE objects
 DE := $(foreach n, $(all_stems), $(addprefix data/DE_results/, $(addprefix $n, .Rds)))
 DE_dds: $(DE)
