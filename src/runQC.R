@@ -56,6 +56,15 @@ if (length(drop) > 1 & !('none' %in% drop)) {
 assays(dds_filt)[['vsd']] <- vst(dds_filt)
 
 plotQC(dds_filt, glue('{fig_stem}{fig_name}_post'))
+
+
+group_comparison <- as.character(design(dds_filt))[-1]
+if ('Donor' %in% colnames(colData(dds_filt))){
+    collapse_by        <- paste0(group_comparison, '_Donor')
+    dds_filt[[collapse_by]] <- paste0(dds_filt[[group_comparison]], '_', dds_filt[['Donor']]) 
+    dds_coll           <- collapseReplicates(dds_filt, dds_filt[[collapse_by]], dds_filt[['Replicate']])
+    dds_filt                <- dds_coll
+}
 saveRDS(dds_filt, file=glue('./data/clean_dds/{fig_name}.Rds'))
 
 
