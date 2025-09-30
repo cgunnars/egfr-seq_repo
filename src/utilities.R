@@ -124,18 +124,6 @@ readtxt <- function(file) {
 }
 
 
-getDrugColors <- function() {
-    cols <- c('pel' = '#FC5A8D', 'pelitinib' = '#FC5A8D',  'pel_d1'  = '#FC5A8D', 
-              'DMSO'= '#808080',  'DMSO_d1' = '#808080',
-              'gef' = '#87de87', 'gefitinib' = '#87de87', 'gef_d1'  = '#87de87', 
-              'lap'='#4169e1' ,   'var'='#6F2DA8', 'rifampicin'='#FFFFFF',
-              'sara' = '#C00000', 'saracatinib' = '#C00000', 'sara_d1' = '#C00000')
-}
-
-getFCColors <- function() {
-    col_fun = colorRamp2(c(-2, 0, 2), c('#018571', 'white', '#A16928'))
-    return(col_fun)
-}
 
 # for timecourse with n_timepoints,
 # return list of up+down genes + a plottable dataframe of n genes vs time
@@ -252,13 +240,68 @@ getDEGs_comparison <- function(dds1, dds2, coef1, coef2, group1=NA, group2=NA, f
     return(combined)
 }
 
+compareDEGs <- function(stem1, stem2, coef1, coef2, mode='axenic', fcthresh_low=0.7) {
+    res_1 <- read.csv(glue('./data/DE_results/{stem1}_{coef1}_full.csv'), row.names=1)
+    res_2 <- read.csv(glue('./data/DE_results/{stem2}_{coef2}_full.csv'), row.names=1)
+    if (mode == 'joint' & stem1 == stem2) {
+        ## assumes that dds1 and dds2 are the same thing....
+        coef_split1 <- coef1 %>% str_split(., '_vs_')
+        coef_split1 <- coef_split1[[1]][1] 
+        coef_split2 <- coef2 %>% str_split(., '_vs_')
+        coef_split2 <- coef_split2[[1]][1]
+
+        ## we require at least one of these to exist
+        coef_12 <- glue('{coef_split1}_vs_{coef_split2}')
+        file_12 <- glue('./data/DE_results/{stem1}_{coef_12}_full.csv')
+        coef_21 <- glue('{coef_split2}_vs_{coef_split1}')
+        file_21 <- glue('./data/DE_results/{stem1}_{coef_21}_full.csv')
+        if (file.exists(file_12)) {  
+            res_12  <- read.csv(file_12, row.names=1)
+        } else if (file.exists(file_21)) {
+            res_21  <- read.csv(file_21, row.names=1)
+            res_21$log2FoldChange <- -res_21$log2FoldChange
+            res_12 <- res_21
+        } 
+    
+        res_list <- list(res_1, res_2, res_12)
+        resnames <- list('1', '2', '12')
+    } else {
+        res_list <- list(res_1, res_2)
+        resnames <- list('1', '2')
+    }
+    combined_rownames <- Reduce(intersect, lapply(res_list, function(i) rownames(i)))
+    combined_colnames <- c('log2FoldChange', 'DE', 'notDE', 'baseMean', 'padj')
+    combined <- do.call(cbind,
+                        lapply(res_list, function(i) i[combined_rownames, combined_colnames])
+                )
+    colnames(combined) <- unlist(lapply(resnames, 
+                                 function(i) 
+                                     c(glue('FC_{i}'), glue('DE_{i}'), glue('notDE_{i}'), glue('baseMean_{i}'), glue('padj_{i}'))
+                                 ))
+    combined$category <- 'mixed evidence'
+    combined[combined$DE_1 & !combined$notDE_2, 'category'] <- 'DE 1, DE 2 not excluded'
+    combined[combined$DE_1 & abs(combined$FC_2) > fcthresh_low & !combined$DE_2, 'category'] <- 'DE 1, DE 2 likely'
+    combined[combined$DE_1 & combined$notDE_2, 'category']  <- 'DE 1, DE 2 unlikely'                          
+    combined[combined$DE_2 & combined$notDE_1, 'category']  <- 'DE 2, DE 1 unlikely'
+    combined[combined$DE_2 & !combined$notDE_1, 'category'] <- 'DE 2, DE 1 not excluded'
+    combined[combined$DE_2 & abs(combined$FC_1) > fcthresh_low & !combined$DE_1, 'category'] <- 'DE 2, DE 1 likely'
+    combined[combined$DE_1 & combined$DE_2, 'category']     <- 'DE 1, DE 2'
+    combined[combined$notDE_1 & combined$notDE_2, 'category'] <- 'low change'
+
+    # for joint mode, use differential expression information to triage DEGs 
+    if (mode == 'joint') { 
+        combined[combined$DE_1 & !combined$notDE_2 & !combined$DE_2 & combined$DE_12, 'category'] <- 'DE 1, DE 2 unlikely'
+        combined[combined$DE_2 & !combined$notDE_1 & !combined$DE_1 & combined$DE_12, 'category'] <- 'DE 2, DE 1 unlikely'
+    } 
+    return(combined)
+}
 
 ### PLOTTING
 plotAxenicHeatmap <- function(dds, combined, group, conditions, mode='axenic') {
     set.seed(3)
     vsd  <- assays(dds)[['vsd']]
     
-    col_fun = colorRamp2(c(-2, 0, 2), c('#018571', 'white', '#A16928'))
+    col_fun = getFCColors()
    
     if (mode == 'axenic') {
         degs <- rownames(combined[combined$DE_1, ])
@@ -298,14 +341,8 @@ plotAxenicHeatmap <- function(dds, combined, group, conditions, mode='axenic') {
                                      category  =  combined[degs, 'category'],
                                      category2 =  combined[degs, 'category2'])
         col = list(fc_1 = col_fun, fc_2 = col_fun, fc_3 = col_fun, 
-                   category = c('#A000C0', '#DF86C4', 
-                                '#FFD9D0', '#F8766D'),
-                   category2 = c('#A000C0', '#DF86C4', 
-                                 '#FFD9D0', '#F8766D'))
-        names(col$category)  <- c('DE 1, DE 2', 'DE 1, DE 2 likely', 
-                                  'DE 1, DE 2 not excluded', 'DE 1, DE 2 unlikely')
-        names(col$category2) <- c('DE 1, DE 2', 'DE 1, DE 2 likely', 
-                                  'DE 1, DE 2 not excluded', 'DE 1, DE 2 unlikely')
+                   category = getCategoryColors(), 
+                   category2 = getCategoryColors())
         gap = c(4,1,1,1,1,4)
     } else if (mode == 'single') {
         degs <- rownames(combined[combined$DE_1, ])
@@ -343,6 +380,19 @@ plotBasicHeatmap <- function(degs, dds, group, conditions, cluster_columns=TRUE,
     column_split = factor(mat_subset[[group]], levels=conditions)
     hm <- Heatmap(scaled_mat, name='row z(vsd)', column_split=column_split, cluster_columns=cluster_columns, row_km=row_km)
     return(hm)
+}
+
+getDrugColors <- function() {
+    cols <- c('pel' = '#FC5A8D', 'pelitinib' = '#FC5A8D',  'pel_d1'  = '#FC5A8D', 
+              'DMSO'= '#808080',  'DMSO_d1' = '#808080',
+              'gef' = '#87de87', 'gefitinib' = '#87de87', 'gef_d1'  = '#87de87', 
+              'lap'='#4169e1' ,   'var'='#6F2DA8', 'rifampicin'='#FFFFFF',
+              'sara' = '#C00000', 'saracatinib' = '#C00000', 'sara_d1' = '#C00000')
+}
+
+getFCColors <- function() {
+    col_fun = colorRamp2(c(-2, 0, 2), c('#018571', 'white', '#A16928'))
+    return(col_fun)
 }
 
 getCategoryColors <- function(mode='ref') {

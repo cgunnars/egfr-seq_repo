@@ -47,13 +47,13 @@ ctrl_i  <- args$v
 ctrl_a  <- args$w
 group_i <- args$g
 group_a <- args$j
-coef_i = glue('{group_i}_{cond_i}_vs_{ctrl_i}')
-coef_a = glue('{group_a}_{cond_a}_vs_{ctrl_a}')
+coef_i = glue('{cond_i}_vs_{ctrl_i}')#glue('{group_i}_{cond_i}_vs_{ctrl_i}')
+coef_a = glue('{cond_a}_vs_{ctrl_a}')#glue('{group_a}_{cond_a}_vs_{ctrl_a}')
 
 dds_i <- readRDS(glue('./{data_dir}/{exp_i}.Rds'))
 dds_a <- readRDS(glue('./{data_dir}/{exp_a}.Rds'))
 
-combined_ia  <- getDEGs_comparison(dds_i, dds_a, coef_i, coef_a, group1=group_i, group2=group_a)
+combined_ia  <- compareDEGs(exp_i, exp_a, coef_i, coef_a, mode='axenic')#getDEGs_comparison(dds_i, dds_a, coef_i, coef_a, group1=group_i, group2=group_a)
 hm_ia        <- plotAxenicHeatmap(dds_i, combined_ia, group_i, conditions=c(cond_i, ctrl_i, 'phago_4h'))
 pdf(file=glue('{fig_dir}/axenic_heatmap_{cond_i}_{exp_a}.pdf'), width=8, height=10)
 draw(hm_ia)

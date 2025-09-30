@@ -55,7 +55,6 @@ combined_2 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref2}_{ref1}_{ref
 combined_3 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref3}_{ref1}_{ref2}.csv'))
 combined_all <- list(combined_1, combined_2, combined_3)
 
-
 degs_all     <- lapply(combined_all,
                        function(x) return(x[x$DE_1,]))
 degs_all     <- lapply(degs_all, function(x) addDir(x))
@@ -145,28 +144,28 @@ ggsave(glue('./fig/combined_bar/{experiment}_vennlikely.pdf'), shared_venn, widt
 ## draw unique and shared heatmaps
 dds <- readRDS(glue('./data/DE_results/{experiment}.Rds'))
 hm_unique <- plotBasicHeatmap(degs_1unique, dds, group, conditions)
-pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref1}.pdf'), 
+pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref1}_unique.pdf'), 
     height=getHeight(degs_1unique))#, units='in', res=480)
 draw(hm_unique)
 dev.off()
 
 
 hm_unique <- plotBasicHeatmap(degs_2unique, dds, group, conditions)
-pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref2}.pdf'), 
+pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref2}_unique.pdf'), 
     height=getHeight(degs_2unique))#, units='in', res=480)
 draw(hm_unique)
 dev.off()
 
 
 hm_unique <- plotBasicHeatmap(degs_3unique, dds, group, conditions)
-pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref3}.pdf'),
+pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref3}_unique.pdf'),
     height=getHeight(degs_3unique))#, units='in', res=480)
 draw(hm_unique)
 dev.off()
 
 
 hm_shared <- plotBasicHeatmap(Reduce(intersect,all_deglikely), dds, group, conditions)
-pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_shared.pdf'),
+pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_likely_shared.pdf'),
     height=getHeight(Reduce(intersect,all_deglikely)))#, units='in', res=480)
 draw(hm_shared)
 dev.off()

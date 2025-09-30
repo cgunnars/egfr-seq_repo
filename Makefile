@@ -15,7 +15,7 @@ abx_design := Drug Dose
 intra6p_design := Drug Day
 intra6h_design := Drug
 intrap_design := Drug Day
-
+# name of "biological replicate", by default if "Donor" is present, we'll collapse "Replicate" by "Donor"
 axenic_biorep=Replicate
 intra_biorep=Donor
 
@@ -27,32 +27,48 @@ tables: DE_tables combined_host_tables combined_pathogen_tables
 
 clean_env: 
 	rm -r fig/*/*.pdf
+########### 00 GROWTH ##########
+data/lux_data/%/all-data.xlsx: src/growth/loadData.py
+	python $< -dir $(dir $@) -out $(notdir $@)
+data/lux_data/%/clean-data.xlsx: src/growth/cleanData.py data/lux_data/%/all-data.xlsx
+	python $< -dir $(dir $@) -i $(notdir $(word 2, $^)) -out $(notdir $@)
+raw_lux := data/lux_data/fig4/all-data.xlsx data/lux_data/fig1/all-data.xlsx
+clean_lux: $(raw_lux:%all-data.xlsx=%clean-data.xlsx)
+
+fig/growth/%_endpt.pdf: src/growth/plotEndpt.py data/lux_data/%/clean-data.xlsx
+	python $< -i $(word 2, $^) -o $@
+fig/growth/%_gc.pdf: src/growth/plotGrowthCurve.py data/lux_data/%/clean-data.xlsx
+	python $< -i $(word 2, $^) -o $@
+lux_figs: fig/growth/fig1_endpt.pdf fig/growth/fig4_endpt.pdf fig/growth/fig1_gc.pdf fig/growth/fig4_gc.pdf fig/growth-RNAseq_lux.pdf
+
+fig/growth/RNAseq_lux.pdf: src/plotDay1.R data/lux_data/fig4/clean-data.xlsx
+	Rscript $< 
 
 ########### 00 PREPROCESSING into a standard format ###########
-data/raw_dds/$(abx_stem).Rds: src/loadData.R data/raw_counts/$(abx_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
+data/raw_dds/$(abx_stem).Rds: src/proc/loadData.R data/raw_counts/$(abx_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
 	Rscript $< -i $(word 2, $^) -l $(word 3, $^) --pathogen -s $(abx_design) $(axenic_biorep) -d $(abx_design) 
 
-data/raw_dds/$(axenic_stem).Rds: src/loadData.R data/raw_counts/$(axenic_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
+data/raw_dds/$(axenic_stem).Rds: src/proc/loadData.R data/raw_counts/$(axenic_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
 	Rscript $< -i $(word 2, $^) -l $(word 3, $^) --pathogen -s $(axenic_design) $(axenic_biorep) -d $(axenic_design)
 
-data/raw_dds/$(intra6p_stem).Rds: src/loadData.R data/raw_counts/$(intra6p_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
+data/raw_dds/$(intra6p_stem).Rds: src/proc/loadData.R data/raw_counts/$(intra6p_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
 	Rscript $< -i $(word 2, $^) -l $(word 3, $^) --pathogen -s $(intra6p_design) $(intra_biorep) Replicate -d $(intra6p_design)
 
 # pilot run has only one donor, use "Well" argument to avoid collapsing as a technical replicate"
-data/raw_dds/$(intrap_stem).Rds: src/loadData.R data/raw_counts/$(intrap_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
+data/raw_dds/$(intrap_stem).Rds: src/proc/loadData.R data/raw_counts/$(intrap_stem).tsv data/gene_info/H37Rv_gene-lengths.csv
 	Rscript $< -i $(word 2, $^) -l $(word 3, $^) --pathogen -s $(intrap_design) Well -d $(intrap_design)	
 
 # for host, no need to specify -l (locus file) and --pathogen flags
-data/raw_dds/$(intra6h_stem).Rds: src/loadData.R data/raw_counts/$(intra6h_stem).Rds
+data/raw_dds/$(intra6h_stem).Rds: src/proc/loadData.R data/raw_counts/$(intra6h_stem).Rds
 	Rscript $< -i $(word 2, $^) -s $(intra6h_design) $(intra_biorep) Replicate -d $(intra6h_design) -m Day d1
 
 raw := $(foreach n, $(all_stems), $(addprefix data/raw_dds/, $(addprefix $n, .Rds)))
 raw_dds: $(raw)
 
 ########### 01 RUN QC ##########
-data/clean_dds/$(abx_stem).Rds: src/proc/runQC.R.R data/raw_dds/$(abx_stem).Rds
+data/clean_dds/$(abx_stem).Rds: src/proc/runQC.R data/raw_dds/$(abx_stem).Rds
 	Rscript $< -i $(word 2, $^) -d gef_25_S15 pel_5_S13 pel_25_S12
-data/clean_dds/%.Rds: src/proc/runQC.R.R data/raw_dds/%.Rds
+data/clean_dds/%.Rds: src/proc/runQC.R data/raw_dds/%.Rds
 	Rscript $< -i $(word 2, $^)
 ### also generates QC plots and plots of expression similarity
 fig/QC/%_post.pdf: data/clean_dds/%.Rds
@@ -95,7 +111,7 @@ clean: $(clean_df) $(clean_dds)
 
 
 ########### 03 RUN DE ########### 
-data/DE_results/%.Rds: src/proc/runDE.R.R data/clean_dds/%.Rds data/comparisons/comparisons_%.txt
+data/DE_results/%.Rds: src/proc/runDE.R data/clean_dds/%.Rds data/comparisons/comparisons_%.txt
 	Rscript $< -i $(word 2, $^) -c $(word 3, $^)
 ## also generates volcano plot and DE results table
 fig/DE_results/$(abx_stem)_volcano_%.pdf: data/DE_results/$(abx_stem).Rds #must exist in comparisons.txt to rebuild correctly
@@ -159,16 +175,15 @@ DE_tables: $(axenic_de) $(abx_de) $(6p_de) $(6h_de) $(p_de)
 DE := $(foreach n, $(all_stems), $(addprefix data/DE_results/, $(addprefix $n, .Rds)))
 DE_dds: $(DE)
 
-
 ## FIGURE 1 CHEMICAL INFO
-fig/chem_info/tanimoto.svg: src/getSMILES.py data/lux_data/compiled-clean-data.xlsx
+fig/chem_info/tanimoto.svg: src/getSMILES.py data/lux_data/fig1/clean-data.xlsx
 	python $<
 fig/chem_info/EGFR-spec-heatmap.svg: fig/chem_info/tanimoto.svg 
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-fig/chem_info/EGFR-kd-ctrl.svg: src/getSMILES.py data/lux_data/compiled-clean-data.xlsx
+fig/chem_info/EGFR-kd-ctrl.svg: src/getSMILES.py data/lux_data/fig1/clean-data.xlsx
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
@@ -239,8 +254,6 @@ fig/abx-dose/pca_all_1_2.pdf: fig/abx-dose/lap-var_upset.pdf
 ## FIGURE 4 intraCELLULAR 
 fig4: $(relative_heatmaps_pathogen) iMod_enrich_unique fig/growth/RNAseq_lux.pdf fig/combined_bar/$(intra6p_stem)_fill.pdf fig/combined_bar/$(intra6p_stem)_n.pdf fig/combined_bar/$(intra6p_stem)_vennlikely.pdf
 
-fig/growth/RNAseq_lux.pdf: src/plotDay1.R #data/lux_data/pel-clean_data.xlsx
-	Rscript $< 
 
 ## Make comparisons of "DE / not DE" for each drug relative to the other two
 combined_p_conds := pel_d1_gef_d1_sara_d1 gef_d1_pel_d1_sara_d1 sara_d1_pel_d1_gef_d1
@@ -248,7 +261,7 @@ combined_h_conds := pel_gef_sara gef_pel_sara sara_pel_gef
 relative_heatmap_host: $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(intra6h_stem)_,  $(combined_h_conds))))
 relative_heatmap_pathogen: $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(intra6p_stem)_,  $(combined_p_conds)))) 
 
-fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_pel_d1_gef_d1_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(intra6p_stem).Rds
+fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_pel_d1_gef_d1_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(intra6p_stem).Rds 
 	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c pel_d1 gef_d1 sara_d1 -g Drug_Day
 fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_gef_d1_pel_d1_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(intra6p_stem).Rds
 	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c gef_d1 pel_d1 sara_d1 -g Drug_Day
@@ -276,12 +289,17 @@ fig/combined_bar/$(intra6p_stem)_vennlikely.pdf: fig/combined_bar/$(intra6p_stem
 		rm -f $<; \
 		make $<; \
 	fi
-data/DE_results/$(intra6p_stem)_%_d1_unique.txt: fig/combined_bar/$(intra6p_stem).pdf
+fig/unique-shared_heatmap/$(intra6p_stem)_%.pdf: fig/combined_bar/$(intra6p_stem)_fill.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-data/DE_results/$(intra6p_stem)_likely_shared.txt: fig/combined_bar/$(intra6p_stem).pdf
+data/DE_results/$(intra6p_stem)_%_d1_unique.txt: fig/combined_bar/$(intra6p_stem)_fill.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+data/DE_results/$(intra6p_stem)_likely_shared.txt: fig/combined_bar/$(intra6p_stem)_fill.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
@@ -304,7 +322,7 @@ sfig_phago: $(phago_plots) fig/time-dependent/phago_$(intrap_stem)_pel_d1_hm.pdf
 fig/time-dependent/phago_$(intra6p_stem)_%_hm.pdf: src/plotPhago.R data/DE_results/$(intra6p_stem).Rds	
 	Rscript $< -i $(intra6p_stem) -c $*
 fig/time-dependent/phago_$(intrap_stem)_%_hm.pdf: src/plotPhago.R data/DE_results/$(intrap_stem).Rds
-	Rscript $< -i $(intrap_stem) -c pel_d1 
+	Rscript $< -i $(intrap_stem) -c $*1 
 
 ### SUPPLEMENTARY FIGURE SIGMA AND TCS
 fig/regulators/sigma_$(intra6p_stem)_%_d1.pdf: src/plotRegulators.R data/DE_results/$(intra6p_stem)_%_d1_vs_DMSO_d1_full.csv data/clean_dds/$(intra6p_stem)_df.csv
@@ -387,7 +405,6 @@ fig/axenic_heatmap/venn_biplot_%.pdf: fig/axenic_heatmap/axenic_heatmap_%.pdf
 		rm -f $<; \
 		make $<; \
 	fi
-
 axenic_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(axenic_stem).pdf, $(axenic_conds)))
 abx_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(abx_stem).pdf, $(axenic_conds)))
 joint_heatmaps: $(axenic_joint_heatmaps) $(abx_joint_heatmaps) fig/axenic_heatmap/axenic_heatmap_pel_d1_$(intrap_stem).pdf
@@ -402,7 +419,7 @@ fig/relative_heatmap/%_intraaxenic_allcomps_iModulon.pdf: src/geneListToGSEA.R d
 data/enrich/pel_d1_intraaxenic_%.csv: fig/relative_heatmap/pel_d1_intraaxenic_allcomps_iModulon.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
-		make $<; \
+		make $<; 
 	fi
 data/enrich/gef_d1_intraaxenic_%.csv: fig/relative_heatmap/gef_d1_intraaxenic_allcomps_iModulon.pdf
 	@if test -f $@; then :; else\

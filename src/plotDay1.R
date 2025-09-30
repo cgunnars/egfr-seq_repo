@@ -2,7 +2,7 @@ source('./src/utilities.R')
 
 prepEnv()
 library(readxl)
-lux <- read_excel('./data/lux_data/pel_clean-data.xlsx')
+lux <- read_excel('./data/lux_data/fig4/clean-data.xlsx')
 
 lux <- lux %>% group_by(condition, day, donor) %>% summarize(mean_mfi = mean(`norm mfi`))
 
