@@ -95,15 +95,15 @@ clean_dds := $(foreach n, $(all_stems), $(addprefix data/clean_dds/, $(addprefix
 
 ########### 02 GENERATE DATAFRAMES FOR PLOTTING ############
 ## Generate -- last argument to -s is the name of the biological replicate
-data/clean_dds/$(intrap_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(intrap_stem).Rds
+data/clean_dds/$(intrap_stem)_df.csv: src/proc/makeGeneDf.R data/clean_dds/$(intrap_stem).Rds
 	Rscript $< -i $(intrap_stem) -s $(intrap_design) $(intra_biorep) 
-data/clean_dds/$(intra6p_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(intra6p_stem).Rds
+data/clean_dds/$(intra6p_stem)_df.csv: src/proc/makeGeneDf.R data/clean_dds/$(intra6p_stem).Rds
 	Rscript $< -i $(intra6p_stem) -s $(intra6p_design) $(intra_biorep)
-data/clean_dds/$(intra6h_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(intra6h_stem).Rds
+data/clean_dds/$(intra6h_stem)_df.csv: src/proc/makeGeneDf.R data/clean_dds/$(intra6h_stem).Rds
 	Rscript $< -i $(intra6h_stem) -s $(intra6h_design) $(intra_biorep)
-data/clean_dds/$(axenic_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(axenic_stem).Rds
+data/clean_dds/$(axenic_stem)_df.csv: src/proc/makeGeneDf.R data/clean_dds/$(axenic_stem).Rds
 	Rscript $< -i $(axenic_stem) -s $(axenic_design) $(axenic_biorep)
-data/clean_dds/$(abx_stem)_df.csv: src/proc/makeGeneDf.R.R data/clean_dds/$(abx_stem).Rds
+data/clean_dds/$(abx_stem)_df.csv: src/proc/makeGeneDf.R data/clean_dds/$(abx_stem).Rds
 	Rscript $< -i $(abx_stem) -s $(abx_design) $(axenic_biorep) 
 clean_df := $(clean_dds:%.Rds=%_df.csv)
 
