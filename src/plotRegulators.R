@@ -1,21 +1,3 @@
-# generalize to pel
-makeGeneDf <- function(dds) {
-    vsd <- assays(dds)[['vsd']]
-    genedf <- assay(vsd) %>% data.frame() %>% rownames_to_column(var='row') %>% 
-              pivot_longer(., cols=-row) %>% data.frame()
-    meta <-   str_split_fixed(genedf$name, pattern='_', 3) %>% data.frame()
-    colnames(meta) <- c('Drug', 'Day', 'Donor')
-
-    genedf$Drug <- meta$Drug
-    genedf$Drug <- factor(genedf$Drug, levels=c('pel','gef','sara','DMSO', 'phago', 'tb'))
-    genedf$Day  <- meta$Day
-    genedf$Donor <- meta$Donor
-    genedf$Drug_Donor <- paste(meta$Drug, meta$Donor, sep='_')
-    genedf$Donor_Day  <- as.factor(paste(meta$Donor, meta$Day, sep='_'))
-    return(genedf)
-}
-
-
 plotUpregulation <- function(genedf, de) { 
     cols <- getDrugColors()
     p <- ggplot(data=genedf, 
@@ -51,11 +33,7 @@ args  <- parser$parse_args()
 exp   <- args$i
 cond  <- args$c
 ref   <- args$r
-#group <- args$g
 
-
-wd = './data/DE_results'
-dds   <- readRDS(glue('{wd}/{exp}.Rds'))
 
 sigma = c('sigA', 'sigB', 'sigC', 'sigD', 'sigE', 'sigF', 'sigG', 'sigH', 'sigK')
 
@@ -65,10 +43,10 @@ tcs   = c('mprA', 'mprB', 'kdpD', 'kdpE', 'tcrX', 'tcrY', 'mtrA', 'mtrB',
           'devR', 'devS', 'dosT')
 
 day   = 'd1'
-de    <- read.csv(glue('{wd}/{exp}_{cond}_{day}_vs_{ref}_{day}_full.csv'))
+de    <- read.csv(glue('data/DE_results/{exp}_{cond}_{day}_vs_{ref}_{day}_full.csv'))
 colnames(de) <- c('row', colnames(de)[2:length(colnames(de))])
 
-genedf   <- makeGeneDf(dds)
+genedf   <- read.csv(glue('data/clean_dds/{exp}_df.csv'))
 sigma_df <- genedf[genedf$row %in% sigma & 
                    genedf$Drug %in% c(cond, ref) &
                    genedf$Day == day, ]
@@ -85,8 +63,8 @@ de_tcs$value <- min(tcs_df$value)+.5
 pa <- plotUpregulation(sigma_df, de_sigma)
 pb <- plotUpregulation(tcs_df, de_tcs)
 
-a  <- ggsave(glue('./fig/regulators/sigma_{cond}.pdf'), pa,
+a  <- ggsave(glue('./fig/regulators/sigma_{exp}_{cond}.pdf'), pa,
                   width=9, height=2.5, create.dir=T)
                                                   
-b  <- ggsave(glue('./fig/regulators/tcs_{cond}.pdf'), pb, 
+b  <- ggsave(glue('./fig/regulators/tcs_{exp}_{cond}.pdf'), pb, 
       	     width=9, height=7.5, create.dir=T)

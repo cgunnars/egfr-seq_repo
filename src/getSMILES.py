@@ -14,8 +14,6 @@ import sklearn.linear_model
 
 pandas.set_option('display.max_rows', 500)
 pandas.set_option('display.max_columns', 30)
-## read in chemical information 
-chem_info = pandas.read_excel('./data/chem_info/EGFR_KIs-20220415.xlsx')
 seaborn.set_theme(rc={'font.size': 12, 'axes.labelsize': 14, 'legend.fontsize': 10})
 
 # input: data table containing SMILES strings for EGFRis of interest
@@ -74,16 +72,26 @@ def getTanimoto(chem_info):
 
 # input: filename containing cleaned data
 # output: median normalized control per condition at endpoint
-def getCtrl(data='./data/lux_data/compiled-clean-data.xlsx'):
+def getCtrl(data='./data/lux_data/fig1/clean-data.xlsx'):
 
     ## read in control data
-    ctrl_df      = pandas.read_excel('./data/lux_data/compiled-clean-data.xlsx')
+    ctrl_df      = pandas.read_excel(data)
     ctrl_df      = ctrl_df.loc[ctrl_df['day'] == 5, :]
     ctrl_summary = ctrl_df.groupby(['condition', 'donor']).agg({'norm mfi': np.mean})
     ctrl_summary = ctrl_summary.groupby(['condition']).agg({'norm mfi': np.median})
 
     return(ctrl_summary)
 
+def calcCumulativeInhibition(data):
+    ## set values with >100% activity as 100 to avoid going negative
+    inhib = [100 - x if x < 100 else 0 for x in data]
+    # gini curve y
+    inhib_y = np.cumsum(np.sort(inhib) / np.sum(inhib))
+    inhib_x = np.cumsum(np.ones(len(inhib)) / len(inhib))
+    auc = sklearn.metrics.auc(inhib_x, inhib_y)
+
+    gini = 1 - 2 * auc
+    return(gini)
 # returns colors for log2 control (e.g. -1 = 0.5, 0 = 1) ranging from green to pink
 # ASSUMES YOU'RE ROUNDING TO NEAREST 0.5 of log2 normalized control
 def getCtrlColors():
@@ -113,6 +121,8 @@ def getInhib(chem_info, data='./data/chem_info/2011-nbt_inhibition.xls'):
     inhib_data.index = ki_data.loc[compounds,'Drug']
     return(inhib_data)
 
+## read in chemical information 
+chem_info = pandas.read_excel('./data/chem_info/EGFR_KIs-20220415.xlsx')
 ## MAKE CHEMICAL SIMILARITY PLOTS -- PUBCHEM
 # plot clustered tanimoto distance, annotated according to compound intrabacterial effect
 tm   = getTanimoto(chem_info)
@@ -140,16 +150,6 @@ seaborn.clustermap(data = inhib_data_sparse, mask = inhib_data_sparse.isnull(), 
 plt.savefig('./fig/chem_info/EGFR-spec-heatmap.svg', bbox_inches='tight')
 
 
-def calcCumulativeInhibition(data):
-    ## set values with >100% activity as 100 to avoid going negative
-    inhib = [100 - x if x < 100 else 0 for x in data]
-    # gini curve y
-    inhib_y = np.cumsum(np.sort(inhib) / np.sum(inhib))
-    inhib_x = np.cumsum(np.ones(len(inhib)) / len(inhib))
-    auc = sklearn.metrics.auc(inhib_x, inhib_y)
-
-    gini = 1 - 2 * auc
-    return(gini)
 
 gini = inhib_data.apply(calcCumulativeInhibition, axis=1)
 

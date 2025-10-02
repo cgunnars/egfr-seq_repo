@@ -4,22 +4,22 @@ prepEnv()
 
 parser <- ArgumentParser()
 parser$add_argument('-i', nargs=1, type='character') #experiment name
-parser$add_argument('-v', nargs=1, type='character') #vehicle control condition
-parser$add_argument('-r', nargs=1, type='character') #reference experimental condition
-parser$add_argument('-c', nargs=1, type='character') #exp condition 1
-parser$add_argument('-d', nargs=1, type='character') #exp condition 2
+parser$add_argument('-r', nargs=1, type='character') #ctrl condition
+parser$add_argument('-c', nargs=3, type='character') #exp conditions, "reference" should be listed first
 parser$add_argument('-g', nargs=1, type='character') #group
 args <- parser$parse_args()
 
 group = args$g
-ctrl  = args$v
-ref   = args$r
-cond1 = args$c
-cond2 = args$d
+ctrl  = args$r
+conds = args$c
+
+ref   = conds[[1]] 
+cond1 = conds[[2]]
+cond2 = conds[[3]]
 conditions = c(ctrl, ref, cond1, cond2)
-coef_ref = glue('{group}_{ref}_vs_{ctrl}')
-coef_1   = glue('{group}_{cond1}_vs_{ctrl}')
-coef_2   = glue('{group}_{cond2}_vs_{ctrl}')
+coef_ref = glue('{ref}_vs_{ctrl}')#glue('{group}_{ref}_vs_{ctrl}')
+coef_1   = glue('{cond1}_vs_{ctrl}')#glue('{group}_{cond1}_vs_{ctrl}')
+coef_2   = glue('{cond2}_vs_{ctrl}')#glue('{group}_{cond2}_vs_{ctrl}')
 
 
 experiment = args$i
@@ -31,7 +31,7 @@ dds_intra <- readRDS(glue('./{data_dir}/{experiment}.Rds'))
 
 # for each DEG in the reference condition, 
 # calculate statistical categories that gene (DE, not DE etc) for tested conditions
-combined_r1 <- getDEGs_comparison(dds_intra, dds_intra, coef_ref, coef_1, group1=group, group2=group, mode='joint')
+combined_r1 <- compareDEGs(experiment, experiment, coef_ref, coef_1, mode='joint')#getDEGs_comparison(dds_intra, dds_intra, coef_ref, coef_1, group1=group, group2=group, mode='joint')
 cols_r1 <- c(unlist(lapply(c('1', '2', '12'), 
                     function(i) { 
                         c(glue('FC_{i}'), 
@@ -42,7 +42,7 @@ cols_r1 <- c(unlist(lapply(c('1', '2', '12'),
                     )     ), 'category')
 colnames(combined_r1) <- cols_r1
 
-combined_r2 <- getDEGs_comparison(dds_intra, dds_intra, coef_ref, coef_2, group1=group, group2=group, mode='joint')
+combined_r2 <- compareDEGs(experiment, experiment, coef_ref, coef_2, mode='joint')#getDEGs_comparison(dds_intra, dds_intra, coef_ref, coef_2, group1=group, group2=group, mode='joint')
 cols_r2 <- c(unlist(lapply(c('1', '3', '13'), 
                     function(i) { 
                         c(glue('FC_{i}'), 
@@ -62,7 +62,7 @@ hm_ref12 <- plotAxenicHeatmap(dds_intra, combined_ref12, group, conditions=condi
 fig_height = 5 + length(combined_ref12[combined_ref12$DE_1, ]) / 2.5 
 fig_width  = length(conditions) * 2 
 
-pdf(file=glue('{fig_dir}/relative_heatmap_{experiment}_{ref}.pdf'), 
+pdf(file=glue('{fig_dir}/relative_heatmap_{experiment}_{ref}_{cond1}_{cond2}.pdf'), 
     width=fig_width, height=fig_height)#, units='in', res=480)
 draw(hm_ref12)
 dev.off()
