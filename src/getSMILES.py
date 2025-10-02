@@ -40,7 +40,13 @@ def getTanimoto(chem_info):
     for m in subms:
         _ = AllChem.GenerateDepictionMatching2DStructure(m, q_core)
 
-    img=Draw.MolsToGridImage(ms, molsPerRow=5, subImgSize=(400, 400), highlightAtomLists=highlight_q, legends=[x.GetProp("_Name") for x in ms])
+    opts = Draw.MolDrawOptions()
+    opts.legendFraction = 0.1
+    opts.minFontSize = 10
+    opts.legendFontSize = 20
+    opts.highlightRadius = 0.75 
+    img=Draw.MolsToGridImage(ms, molsPerRow=5, subImgSize=(250, 250), highlightAtomLists=highlight_q, 
+                             legends=[x.GetProp("_Name") for x in ms], drawOptions=opts)
     img.save('./fig/chem_info/scaffold_grid.pdf')
 
 
@@ -146,7 +152,7 @@ row_colors = lognorm_ctrl.map(lut).values
 # subset to only compounds with strong inhibition
 inhib_data_sparse = inhib_data.loc[:, (inhib_data[inhib_data < 75].count() > 1)]
 plt.figure(figsize=(0.5*len(inhib_data_sparse.columns), 0.75 * len(inhib_data_sparse.index)))
-seaborn.clustermap(data = inhib_data_sparse, mask = inhib_data_sparse.isnull(), cmap='viridis_r', col_cluster=False, row_cluster=False, row_colors=row_colors)#, dendrogram_ratio=0)
+seaborn.clustermap(data = inhib_data_sparse, mask = inhib_data_sparse.isnull(), cmap='viridis_r', col_cluster=False, row_cluster=False, row_colors=row_colors, cbar_pos=(0, .2, .03, .4))#, dendrogram_ratio=0)
 plt.savefig('./fig/chem_info/EGFR-spec-heatmap.svg', bbox_inches='tight')
 
 

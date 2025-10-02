@@ -5,8 +5,8 @@ library(plyr)
 library(dplyr)
 library(tidyr)
 library(pheatmap)
+library(readxl)
 
-# Read in sci-plex repo functions
 ### Re-work data frames to join Adaptation, proliferation and MKI67 data
 Adaptive_signature_df <- readRDS("./data/source_data/sci-plex/adaptive_resistance_upgenes_zscored.RDS")
 
@@ -39,6 +39,19 @@ drug_annotations$Reversibility <- sapply(drug_annotations$reversible, function(x
   return("Unknown")
 })
 
+
+ctrl_df <- read_excel("./data/lux_data/fig1/clean-data.xlsx")
+ctrl_df <- ctrl_df %>% filter(day==5) %>% group_by(condition, donor) %>% summarize(mean_mfi = mean(`norm mfi`))
+ctrl_df <- ctrl_df %>% group_by(condition) %>% summarize(median_mfi = median(mean_mfi))
+
+ctrl_df$log2_ctrl <- round(log2(ctrl_df$median_mfi) * 2) / 2
+
+drug_annotations$log2_ctrl <- 0
+
+drug_annotations[tolower(drug_annotations$drug) %in% ctrl_df$condition, 'log2_ctrl']  
+print(head(drug_annotations))
+
+
 ann_col <- list(Reversibility = c("Covalent" = "#FF0022","Reversible" = "#011627","Unknown" = "white"),
                 Class = c("acetamide" = RColorBrewer::brewer.pal(9,"Set1")[1], 
                           "aminobenzimidazole" = RColorBrewer::brewer.pal(9,"Set1")[2],
@@ -61,8 +74,6 @@ ann_col <- list(Reversibility = c("Covalent" = "#FF0022","Reversible" = "#011627
                           "tyrphostin" = RColorBrewer::brewer.pal(3,"Paired")[2]))
 set.seed(3)
 
-print(drug_annotations$class_broad[!drug_annotations$class_broad %in% names(ann_col$Class)])
-print(ann_col)
 pheatmap::pheatmap(Adaptive_signature_df_joint,
                    clustering_method = "ward.D2",
                    cluster_rows = FALSE,

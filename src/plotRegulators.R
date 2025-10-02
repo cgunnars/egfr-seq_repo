@@ -67,4 +67,4 @@ a  <- ggsave(glue('./fig/regulators/sigma_{exp}_{cond}.pdf'), pa,
                   width=9, height=2.5, create.dir=T)
                                                   
 b  <- ggsave(glue('./fig/regulators/tcs_{exp}_{cond}.pdf'), pb, 
-      	     width=9, height=7.5, create.dir=T)
+      	     width=9, height=5, create.dir=T)
