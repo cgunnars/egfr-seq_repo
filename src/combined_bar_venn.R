@@ -27,8 +27,6 @@ addDir <- function(degs) {
     return(degs)
 }
 
-
-
 parser <- ArgumentParser() ## TODO: extensibility for n conditions 
 parser$add_argument('-e', type='character', nargs=1) # experiment name
 parser$add_argument('-c', type='character', nargs=3) # condition 1, condition 2, condition 3
@@ -48,7 +46,6 @@ ref2       = refs_all[[2]] #'gef_d1'
 ref3       = refs_all[[3]] #'sara_d1'
 conditions = c(refs_all, ctrl)
 
-
 # read in categorization tables for each condition's DEGs
 combined_all <- lapply(seq(refs_all), 
                        function(i) {
@@ -56,7 +53,6 @@ combined_all <- lapply(seq(refs_all),
                            other <- paste(refs_all[-i], collapse='_')
                            combined <- read.csv(glue('{data_dir}/combined/{experiment}_{ref}_{other}.csv'))
                        })
-
 
 degs_all     <- lapply(combined_all,
                        function(x) return(x[x$DE_1,]))
@@ -70,8 +66,6 @@ deg_df       <- do.call('rbind', degs_all)
 # set factor levels for plotting 
 cat_df$condition <- factor(cat_df$condition, levels=c(ref1, ref2, ref3))
 cat_df$dir       <- factor(cat_df$dir, levels=c('TRUE','FALSE'))
-
-
 
 ## fig 2g
 n_df <- cat_df %>% group_by(condition, dir) %>% summarize(n=sum(n)/2) # divide by two to account for double entries
@@ -89,9 +83,6 @@ ggplot(data = n_df, aes(x=condition, y=n)) +
        facet_grid(vars(dir)) + theme_classic()
 ggsave(glue('./fig/combined_bar/{experiment}_n.pdf'), 
        width=6, height=3, dpi=300, units='in', create.dir=T)
-
-
-
 
 ## for each gene, categorize as condition-specific or shared
 likely = c('DE 1, DE 2 likely', 'DE 1, DE 2')
@@ -140,34 +131,6 @@ shared_venn <- plot(euler(all_deg, labels=names(all_deglikely), shape='ellipse')
 ggsave(glue('./fig/combined_bar/{experiment}_vennlikely.pdf'), shared_venn, width=8, height=8, create.dir=T)
 
 
-## draw unique and shared heatmaps
-dds <- readRDS(glue('./data/DE_results/{experiment}.Rds'))
-hm_unique <- plotBasicHeatmap(degs_unique[[1]], dds, group, conditions)
-pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref1}_unique.pdf'), 
-    height=getHeight(degs_unique[[1]]))#, units='in', res=480)
-draw(hm_unique)
-dev.off()
-
-
-hm_unique <- plotBasicHeatmap(degs_unique[[2]], dds, group, conditions)
-pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref2}_unique.pdf'), 
-    height=getHeight(degs_unique[[2]]))#, units='in', res=480)
-draw(hm_unique)
-dev.off()
-
-
-hm_unique <- plotBasicHeatmap(degs_unique[[3]], dds, group, conditions)
-pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref3}_unique.pdf'),
-    height=getHeight(degs_unique[[3]]))#, units='in', res=480)
-draw(hm_unique)
-dev.off()
-
-
-hm_shared <- plotBasicHeatmap(shared, dds, group, conditions)
-pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_likely_shared.pdf'),
-    height=getHeight(shared))#, units='in', res=480)
-draw(hm_shared)
-dev.off()
 
 ## reassemble truth table and write to file
 rownames <- combined_all[[1]]$X 

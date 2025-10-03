@@ -139,7 +139,7 @@ n_bg 	   = args$n
 if (is.null(n_bg)) { n_bg <- NA}
 exp        = args$e
 
-if (mode == 'intraaxenic') {
+if (mode == 'intraaxenic') { ## in this mode, calculate iModulon enrichment, with and without shared 
 	exp_intra    <- exp[[1]]
 	exp_axenic   <- exp[[2]]
 	comp <- read.csv(glue('{data_dir}/combined/combined_{mode}_{comparison}_{exp_axenic}.csv'), row.names=1)
@@ -166,7 +166,7 @@ if (mode == 'intraaxenic') {
 	gef           <- readtxt(glue('{data_dir}/{exp_intra}_gef_d1_unique.txt'))
 	sara          <- readtxt(glue('{data_dir}/{exp_intra}_sara_d1_unique.txt'))
 	
-	comp_names    <- c('shared', 'pel_d1', 'gef_d1', 'sara_d1')
+	comp_names    <- c('likely_shared', 'pel_d1_unique', 'gef_d1_unique', 'sara_d1_unique')
 	gene_lists <- list(likely_shared, pel, gef, sara)
 	n_bg       <- rep(n_bg, length(gene_lists))
 } else if (mode == 'single') {
@@ -241,19 +241,11 @@ if (mode == 'drugs') {
 
 	mod_annos  <- lapply(gene_lists, function(x) makeModAnno(gene_mod, x))
 
-
-	#hm_shared <- plotBasicHeatmap(gene_lists[[1]], dds, group, c(conditions, 'DMSO_d1'))
-	#hm_shared <- rowAnnotation(df=mod_annos[[1]],
-	#			   col = list(iModulon_name = mod_colors, iModulon_name_2 = mod_colors)) + hm_shared
-	#pdf(file=glue('./fig/unique-shared_heatmap/{exp_intra}_shared_test.pdf'), height=10, width=10)
-	#draw(hm_shared)
-	#dev.off()	
-	
 	lapply(seq(gene_lists), function(i) {
 	       		hm <- plotBasicHeatmap(gene_lists[[i]], dds, group, c(conditions, 'DMSO_d1'))
 			hm <- rowAnnotation(df=mod_annos[[i]], 
 				   	    col = list(iModulon_name = mod_colors, iModulon_name_2 = mod_colors)) + hm
-			pdf(file=glue('./fig/unique-shared_heatmap/{exp_intra}_{comp_names[i]}_test.pdf'), 
+			pdf(file=glue('./fig/unique-shared_heatmap/{exp_intra}_{comp_names[i]}.pdf'), 
 			    height=getHeight(gene_lists[[i]]))
 			draw(hm)
 			dev.off()	
