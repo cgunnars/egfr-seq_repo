@@ -9,10 +9,10 @@ prepEnv()
 # in: dataframe degs which specifies whether gene is DE / not DE / likely DE  in other conditions
 #     string refname which designates the primary condition
 # out: dataframe degs containing DE / not DE / likely DE counts for each other condition 
-# pre: degs must have columns called category and category2, which specify whether DEG is DE in two other conditions
+# pre: degs must have columns called category1 and category2, which specify whether DEG is DE in two other conditions
 getCatN <- function(degs, refname) {
-    category1 <- degs %>% dplyr::count(category,dir, sort=T)
-    category1 <- category1 %>% pivot_longer(cols='category')
+    category1 <- degs %>% dplyr::count(category1,dir, sort=T)
+    category1 <- category1 %>% pivot_longer(cols='category1')
     category2 <- degs %>% dplyr::count(category2,dir , sort=T)
     category2 <- category2 %>% pivot_longer(cols='category2')
     
@@ -50,10 +50,13 @@ conditions = c(refs_all, ctrl)
 
 
 # read in categorization tables for each condition's DEGs
-combined_1 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref1}_{ref2}_{ref3}.csv'))
-combined_2 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref2}_{ref1}_{ref3}.csv'))
-combined_3 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref3}_{ref1}_{ref2}.csv'))
-combined_all <- list(combined_1, combined_2, combined_3)
+combined_all <- lapply(seq(refs_all), 
+                       function(i) {
+                           ref <- refs_all[i]
+                           other <- paste(refs_all[-i], collapse='_')
+                           combined <- read.csv(glue('{data_dir}/combined/{experiment}_{ref}_{other}.csv'))
+                       })
+
 
 degs_all     <- lapply(combined_all,
                        function(x) return(x[x$DE_1,]))
@@ -89,87 +92,82 @@ ggsave(glue('./fig/combined_bar/{experiment}_n.pdf'),
 
 
 
-degs_1  <- degs_all[[1]]
-degs_2  <- degs_all[[2]]
-degs_3 <- degs_all[[3]]
 
 ## for each gene, categorize as condition-specific or shared
 likely = c('DE 1, DE 2 likely', 'DE 1, DE 2')
 unlikely = 'DE 1, DE 2 unlikely'
 low_info = 'DE 1, DE 2 not excluded'
 unlikely_all = c(unlikely, low_info) #allow a gene to be likely exclusive if it's unlikely in one and low info in the other
+
+
+# likely degs have to be handled differently based on position because pel_gef_sara, gef_pel_sara, sara_pel_gef appear in different orders ... could be handled by explicitly defining category names (category1 -> category_gef)
+degs_1  <- degs_all[[1]]
+degs_2  <- degs_all[[2]]
+degs_3 <- degs_all[[3]]
 degs_1likely <- unique(c(degs_1$X, 
-                         degs_2[degs_2$category %in% likely, 'X'], 
-                         degs_3[degs_3$category %in% likely, 'X'])
+                         degs_2[degs_2$category1 %in% likely, 'X'], 
+                         degs_3[degs_3$category1 %in% likely, 'X'])
                       )
-degs_1unique <- degs_1[((degs_1$category  == unlikely & degs_1$category2 %in% unlikely_all) |
-                        (degs_1$category2 == unlikely & degs_1$category  %in% unlikely_all)), 'X']
 degs_2likely <- unique(c(degs_2$X,
-                         degs_1[degs_1$category %in% likely, 'X'],
+                         degs_1[degs_1$category1 %in% likely, 'X'],
                          degs_3[degs_3$category2 %in% likely, 'X']))
-degs_2unique <- degs_2[((degs_2$category  == unlikely & degs_2$category2 %in% unlikely_all) | 
-                        (degs_2$category2 == unlikely & degs_2$category  %in% unlikely_all)), 'X']
 degs_3likely <- unique(c(degs_3$X,
                          degs_1[degs_1$category2 %in% likely, 'X'],
                          degs_2[degs_2$category2 %in% likely, 'X']))
-degs_3unique <- degs_3[((degs_3$category  == unlikely & degs_3$category2 %in% unlikely_all) |
-                        (degs_3$category2 == unlikely & degs_3$category  %in% unlikely_all)), 'X']
 
+degs_unique  <- lapply(degs_all, function(degs) {
+                            degs[((degs$category1 == unlikely & degs$category2 %in% unlikely_all) |
+                                  (degs$category2 == unlikely & degs$category1 %in% unlikely_all)), 'X'] 
+                            }
+                       )
 all_deglikely <- list(degs_1likely,
                       degs_2likely,
                       degs_3likely)
-all_deg <-       list(degs_1likely,
-                      degs_2likely,
-                      degs_3likely,
-                      degs_1unique,
-                      degs_2unique,
-                      degs_3unique)
+all_deg <- c(all_deglikely, degs_unique)
 shared = Reduce(intersect, all_deglikely)
+
 writeLines(shared, glue('./data/DE_results/{experiment}_likely_shared.txt'))
-writeLines(degs_1unique, glue('./data/DE_results/{experiment}_{ref1}_unique.txt'))
-writeLines(degs_2unique, glue('./data/DE_results/{experiment}_{ref2}_unique.txt'))
-writeLines(degs_3unique, glue('./data/DE_results/{experiment}_{ref3}_unique.txt'))
+lapply(seq(degs_unique), function(i) writeLines(degs_unique[[i]], 
+                                                glue('./data/DE_results/{experiment}_{refs_all[[i]]}_unique.txt')))
 names(all_deg) <- c(refs_all, 'unique1', 'unique2', 'unique3')
 
-drug_colors <- getDrugColors()
+drug_colors <- getDrugColors() ## TODO: fix colors
 unique_colors <- c('unique1'='#FFFFFF', 'unique2'='#FFFFFF', 'unique3'='#FFFFFF')
 
 venn_colors <- c(drug_colors, unique_colors)
 venn_colors <- venn_colors[names(all_deglikely)]
-## TODO: fix venn colors... or don't
 shared_venn <- plot(euler(all_deg, labels=names(all_deglikely), shape='ellipse'), fills=venn_colors, quantities=T)
 ggsave(glue('./fig/combined_bar/{experiment}_vennlikely.pdf'), shared_venn, width=8, height=8, create.dir=T)
 
 
 ## draw unique and shared heatmaps
 dds <- readRDS(glue('./data/DE_results/{experiment}.Rds'))
-hm_unique <- plotBasicHeatmap(degs_1unique, dds, group, conditions)
+hm_unique <- plotBasicHeatmap(degs_unique[[1]], dds, group, conditions)
 pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref1}_unique.pdf'), 
-    height=getHeight(degs_1unique))#, units='in', res=480)
+    height=getHeight(degs_unique[[1]]))#, units='in', res=480)
 draw(hm_unique)
 dev.off()
 
 
-hm_unique <- plotBasicHeatmap(degs_2unique, dds, group, conditions)
+hm_unique <- plotBasicHeatmap(degs_unique[[2]], dds, group, conditions)
 pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref2}_unique.pdf'), 
-    height=getHeight(degs_2unique))#, units='in', res=480)
+    height=getHeight(degs_unique[[2]]))#, units='in', res=480)
 draw(hm_unique)
 dev.off()
 
 
-hm_unique <- plotBasicHeatmap(degs_3unique, dds, group, conditions)
+hm_unique <- plotBasicHeatmap(degs_unique[[3]], dds, group, conditions)
 pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_{ref3}_unique.pdf'),
-    height=getHeight(degs_3unique))#, units='in', res=480)
+    height=getHeight(degs_unique[[3]]))#, units='in', res=480)
 draw(hm_unique)
 dev.off()
 
 
-hm_shared <- plotBasicHeatmap(Reduce(intersect,all_deglikely), dds, group, conditions)
+hm_shared <- plotBasicHeatmap(shared, dds, group, conditions)
 pdf(file=glue('./fig/unique-shared_heatmap/{experiment}_likely_shared.pdf'),
-    height=getHeight(Reduce(intersect,all_deglikely)))#, units='in', res=480)
+    height=getHeight(shared))#, units='in', res=480)
 draw(hm_shared)
 dev.off()
-
 
 ## reassemble truth table and write to file
 rownames <- combined_all[[1]]$X 

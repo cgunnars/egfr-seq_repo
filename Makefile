@@ -6,8 +6,11 @@ intra6p_stem=20240502_pel-timecourse-6donor_pathogen
 intrap_stem=20240405_pel-timecourse_pathogen
 # Named conditions used for testing
 axenic_conds := gef pel 
+axenic_ctrl = DMSO
 intra_conds := gef_d1 pel_d1 sara_d1
+intra_ctrl = DMSO_d1
 intrahost_conds := gef pel sara
+host_ctrl = DMSO
 intraaxenic_conds := gef_d1 pel_d1
 # name of design --> composite design term Drug_Day or Drug_Dose 
 axenic_design := Drug
@@ -261,17 +264,13 @@ combined_h_conds := pel_gef_sara gef_pel_sara sara_pel_gef
 relative_heatmap_host: $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(intra6h_stem)_,  $(combined_h_conds))))
 relative_heatmap_pathogen: $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(intra6p_stem)_,  $(combined_p_conds)))) 
 
-fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_pel_d1_gef_d1_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(intra6p_stem).Rds 
-	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c pel_d1 gef_d1 sara_d1 -g Drug_Day
-fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_gef_d1_pel_d1_sara_d1.pdf: src/relative_heatmap.R data/DE_results/$(intra6p_stem).Rds
-	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c gef_d1 pel_d1 sara_d1 -g Drug_Day
-fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_sara_d1_pel_d1_gef_d1.pdf: src/relative_heatmap.R data/DE_results/$(intra6p_stem).Rds
-	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c sara_d1 pel_d1 gef_d1 -g Drug_Day
-data/DE_results/combined/$(intra6p_stem)_%.csv: fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_%.pdf
-	@if test -f $@; then :; else\
-		rm -f $<; \
-		make $<; \
-	fi
+fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_%.pdf: src/relative_heatmap.R data/DE_results/$(intra6p_stem).Rds 
+	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c $(subst _, ,$*) -g Drug_Day
+
+data/DE_results/combined/$(intra6p_stem)_%.csv: src/makeCombinedDE.R data/DE_results/$(intra6p_stem).Rds
+	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c $(subst _, ,$*)
+data/DE_results/combined/$(intra6h_stem)_%.csv: src/makeCombinedDE.R data/DE_results/$(intra6h_stem).Rds
+	Rscript $< -i $(intra6h_stem) -r DMSO -c $(subst _, ,$*)
 relative_heatmaps: $(relative_heatmap_host) $(relative_heatmap_pathogen)
 combined_pathogen_tables: $(addprefix data/DE_results/combined/$(intra6p_stem)_, $(addsuffix .csv, $(combined_p_conds)))
 combined_host_tables: $(addprefix data/DE_results/combined/$(intra6h_stem)_, $(addsuffix .csv, $(combined_h_conds))) 
@@ -389,22 +388,21 @@ data/DE_results/$(intra6h_stem)_likely_shared.txt: fig/combined_bar/$(intra6h_st
 fig5: fig/DE_results/$(axenic_stem)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(axenic_stem)_volcano_gef_vs_DMSO.pdf $(axenic_joint_heatmaps) iMod_enrich_axenic	
 
 # AXENIC EFFECT CATEGORIZATION PLOT + HEATMAP
-fig/axenic_heatmap/axenic_heatmap_%_d1_$(axenic_stem).pdf: src/axenic_heatmap.R data/DE_results/$(axenic_stem).Rds data/DE_results/$(intra6p_stem).Rds
-	Rscript $< -i $(intra6p_stem) -a $(axenic_stem) -c $*_d1 -d $* -v DMSO_d1 -w DMSO -g Drug_Day -j Drug
-fig/axenic_heatmap/axenic_heatmap_%_d1_$(abx_stem).pdf: src/axenic_heatmap.R data/DE_results/$(abx_stem).Rds data/DE_results/$(intra6p_stem).Rds
-	Rscript $< -i $(intra6p_stem) -a $(abx_stem) -c $*_d1 -d $*_25 -v DMSO_d1 -w $*_5 -g Drug_Day -j Drug_Dose
+fig/axenic_heatmap/axenic_heatmap_%_d1_$(axenic_stem).pdf: src/axenic_heatmap.R data/DE_results/$(intra6p_stem).Rds data/DE_results/combined/combined_intraaxenic_%_d1_$(axenic_stem).csv#data/DE_results/$(axenic_stem).Rds data/DE_results/$(intra6p_stem).Rds
+	Rscript $< -i $(intra6p_stem) -a $(axenic_stem) -c $*_d1 -r DMSO_d1 -g Drug_Day 
+fig/axenic_heatmap/axenic_heatmap_%_d1_$(abx_stem).pdf: src/axenic_heatmap.R data/DE_results/$(abx_stem).Rds data/DE_results/$(intra6p_stem).Rds data/DE_results/combined/combined_intraaxenic_%_d1_$(abx_stem).csv 
+	Rscript $< -i $(intra6p_stem) -a $(abx_stem) -c $*_d1 -r DMSO_d1 -g Drug_Day
 fig/axenic_heatmap/axenic_heatmap_pel_d1_$(intrap_stem).pdf: src/axenic_heatmap.R data/DE_results/$(intrap_stem).Rds data/DE_results/$(intra6p_stem).Rds
-	Rscript $< -i $(intra6p_stem) -a $(intrap_stem) -c pel_d1 -d pel_d1 -v DMSO_d1 -w DMSO_d1 -g Drug_Day -j Drug_Day
-data/DE_results/combined/combined_intraaxenic_%.csv: fig/axenic_heatmap/axenic_heatmap_%.pdf
-	@if test -f $@; then :; else\
-		rm -f $<; \
-		make $<; \
-	fi
+	Rscript $< -i $(intra6p_stem) -a $(intrap_stem) -c pel_d1 -r DMSO_d1 -g Drug_Day
 fig/axenic_heatmap/venn_biplot_%.pdf: fig/axenic_heatmap/axenic_heatmap_%.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
+
+data/DE_results/combined/combined_intraaxenic_%_d1_$(axenic_stem).csv: src/makeCombinedDE.R data/DE_results/$(axenic_stem).Rds data/DE_results/$(intra6p_stem).Rds
+	Rscript $< -i $(intra6p_stem) $(axenic_stem) -r $(intra_ctrl) $(axenic_ctrl) -c $*_d1 $*
+
 axenic_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(axenic_stem).pdf, $(axenic_conds)))
 abx_joint_heatmaps := $(addprefix fig/axenic_heatmap/axenic_heatmap_, $(addsuffix _d1_$(abx_stem).pdf, $(axenic_conds)))
 joint_heatmaps: $(axenic_joint_heatmaps) $(abx_joint_heatmaps) fig/axenic_heatmap/axenic_heatmap_pel_d1_$(intrap_stem).pdf

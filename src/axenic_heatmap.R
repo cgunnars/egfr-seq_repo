@@ -29,37 +29,25 @@ parser <- ArgumentParser()
 parser$add_argument('-i', nargs=1, type='character') #intracellular experiment name
 parser$add_argument('-a', nargs=1, type='character') #axenic experiment name
 parser$add_argument('-c', nargs=1, type='character') #intracellular exp condition 
-parser$add_argument('-d', nargs=1, type='character') #axenic exp condition
-parser$add_argument('-v', nargs=1, type='character') #intracellular vehicle condition
-parser$add_argument('-w', nargs=1, type='character') #axenic vehicle condition
+parser$add_argument('-r', nargs=1, type='character') #intracellular vehicle condition
 parser$add_argument('-g', nargs=1, type='character') #intracellular group name
-parser$add_argument('-j', nargs=1, type='character') #axenic group name
 
-data_dir = './data/DE_results/'
+data_dir = './data/DE_results'
 fig_dir  = './fig/axenic_heatmap'
 
 args    <- parser$parse_args()
 exp_i   <- args$i
 exp_a   <- args$a
 cond_i  <- args$c
-cond_a  <- args$d
 ctrl_i  <- args$v
-ctrl_a  <- args$w
 group_i <- args$g
-group_a <- args$j
-coef_i = glue('{cond_i}_vs_{ctrl_i}')#glue('{group_i}_{cond_i}_vs_{ctrl_i}')
-coef_a = glue('{cond_a}_vs_{ctrl_a}')#glue('{group_a}_{cond_a}_vs_{ctrl_a}')
 
 dds_i <- readRDS(glue('./{data_dir}/{exp_i}.Rds'))
-dds_a <- readRDS(glue('./{data_dir}/{exp_a}.Rds'))
 
-combined_ia  <- compareDEGs(exp_i, exp_a, coef_i, coef_a, mode='axenic')#getDEGs_comparison(dds_i, dds_a, coef_i, coef_a, group1=group_i, group2=group_a)
+combined_ia  <- read.csv(glue('{data_dir}/combined/combined_intraaxenic_{cond_i}_{exp_a}.csv'), row.names=1)
 hm_ia        <- plotAxenicHeatmap(dds_i, combined_ia, group_i, conditions=c(cond_i, ctrl_i, 'phago_4h'))
 pdf(file=glue('{fig_dir}/axenic_heatmap_{cond_i}_{exp_a}.pdf'), width=8, height=10)
 draw(hm_ia)
 dev.off()
-
-write.csv(combined_ia, glue('{data_dir}/combined/combined_intraaxenic_{cond_i}_{exp_a}.csv'))
-
 
 plotDEGs_comparison(combined_ia, 'intracellular', 'axenic', glue('{cond_i}_{exp_a}'))
