@@ -178,19 +178,19 @@ DE := $(foreach n, $(all_stems), $(addprefix data/DE_results/, $(addprefix $n, .
 DE_dds: $(DE)
 
 ## FIGURE 1 CHEMICAL INFO
-fig/chem_info/tanimoto.svg: src/getSMILES.py data/lux_data/fig1/clean-data.xlsx
+fig/chem_info/tanimoto.svg: src/plot_cheminfo.py data/lux_data/fig1/clean-data.xlsx
 	python $<
 fig/chem_info/EGFR-spec-heatmap.svg: fig/chem_info/tanimoto.svg 
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-fig/chem_info/EGFR-kd-ctrl.svg: src/getSMILES.py data/lux_data/fig1/clean-data.xlsx
+fig/chem_info/EGFR-kd-ctrl.svg: src/plot_cheminfo.py data/lux_data/fig1/clean-data.xlsx
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-fig/chem_info/scaffold_grid.pdf: src/getSMILES.py 
+fig/chem_info/scaffold_grid.pdf: src/plot_cheminfo.py 
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
@@ -310,7 +310,7 @@ combined_bar: fig/combined_bar/$(intra6p_stem)_fill.pdf fig/combined_bar/$(intra
 ## For the list of likely shared and drug-specific genes, calculate iModulon enrichment -> stacked bar plot, also plot iModulon mappings as heatmap and iModulon terms as heatmap
 drug_iMod_enrich_tables: $(addprefix data/enrich/all_drugs_, $(addsuffix .csv, $(shared-unique_p_suffix)))
 unique_shared_heatmaps: $(addprefix fig/unique-shared_heatmap/$(intra6p_stem)_, $(addsuffix .pdf, $(shared-unique_p_suffix)))
-fig/imodulon/all_drugs_allcomps_iModulon.pdf: src/geneListToGSEA.R $(shared-unique_p_genelists) 
+fig/imodulon/all_drugs_allcomps_iModulon.pdf: src/imodulon_enrichment.R $(shared-unique_p_genelists) 
 	Rscript $< -c all -m drugs -n 320 -e $(intra6p_stem) 
 data/enrich/all_drugs_%.csv: fig/imodulon/all_drugs_iModulon.pdf
 	@if test -f $@; then :; else\
@@ -437,7 +437,7 @@ axenic_enrich_suffix := axenic axenic_likely intra intra_unique intra_unique_exc
 gef_axenic_enrich := $(addprefix data/enrich/gef_d1_intraaxenic_, $(addsuffix .csv, $(axenic_enrich_suffix)))
 pel_axenic_enrich := $(addprefix data/enrich/pel_d1_intraaxenic_, $(addsuffix .csv, $(axenic_enrich_suffix)))
 axenic_enrich_tables: $(gef_axenic_enrich) $(pel_axenic_enrich)
-fig/imodulon/%_intraaxenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(intra6p_stem)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_$(axenic_stem).csv
+fig/imodulon/%_intraaxenic_allcomps_iModulon.pdf: src/imodulon_enrichment.R data/DE_results/$(intra6p_stem)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_$(axenic_stem).csv
 	Rscript $< -c $* -m intraaxenic -e $(intra6p_stem) $(axenic_stem)
 data/enrich/pel_d1_intraaxenic_%.csv: fig/imodulon/pel_d1_intraaxenic_allcomps_iModulon.pdf
 	@if test -f $@; then :; else\
@@ -449,7 +449,7 @@ data/enrich/gef_d1_intraaxenic_%.csv: fig/imodulon/gef_d1_intraaxenic_allcomps_i
 		rm -f $<; \
 		make $<; \
 	fi
-fig/imodulon/%_single_iModulon.pdf: src/geneListToGSEA.R
+fig/imodulon/%_single_iModulon.pdf: src/imodulon_enrichment.R
 	Rscript $< -c $* -m single -e $(intrap_stem)
 data/enrich/%_single_pel_d1.csv: fig/imodulon/%_single_iModulon.pdf
 	@if test -f $@; then :; else\
