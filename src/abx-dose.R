@@ -194,13 +194,13 @@ pdf('~/egfr-seq_repo/fig/abx-dose/lap-heatmap.pdf', height=18)
 draw(hm)
 dev.off()
 
-hm_peldose <- plotBasicHeatmap(de_dose$pel, dds, 'Drug_Dose', 
+hm_peldose <- plotBasicHeatmap(de_dose$pel, dds, 
 			       c('pel_25', 'pel_5', 'gef_25', 'gef_5', 'lap_25', 'lap_5', 'var_25', 'var_5'))
 pdf(file='./fig/abx-dose/pel-dose-heatmap.pdf', width=8, height=25)#, units='in', res=480)
 draw(hm_peldose)
 dev.off()
 
-hm_gefdose <- plotBasicHeatmap(de_dose$gef, dds, 'Drug_Dose', 
+hm_gefdose <- plotBasicHeatmap(de_dose$gef, dds, 
 			       c('pel_25', 'pel_5', 'gef_25', 'gef_5', 'lap_25', 'lap_5', 'var_25', 'var_5'))
 pdf(file='./fig/abx-dose/gef-dose-heatmap.pdf', width=8, height=25)#, units='in', res=480)
 draw(hm_gefdose)

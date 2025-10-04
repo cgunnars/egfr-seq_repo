@@ -1,6 +1,7 @@
 
 ## for a given combined DEG table and two plot labels (lab1, lab2),
 #  generate plots of FCs against each other (sfig6e)
+#  generate a venn diagram of DEGs in condition 1 that are "DEGs", "not a DEG" (i.e. below threshold but no claim about signficance)  or "DE unlikely"
 plotDEGs_comparison <- function(combined, lab1, lab2, outname, fcthresh_low=0.7) {
     
     biplot <- ggplot(data=combined, aes(x=FC_2, y=FC_1, col=DE_1)) + 
@@ -30,7 +31,6 @@ parser$add_argument('-i', nargs=1, type='character') #intracellular experiment n
 parser$add_argument('-a', nargs=1, type='character') #axenic experiment name
 parser$add_argument('-c', nargs=1, type='character') #intracellular exp condition 
 parser$add_argument('-r', nargs=1, type='character') #intracellular vehicle condition
-parser$add_argument('-g', nargs=1, type='character') #intracellular group name
 
 data_dir = './data/DE_results'
 fig_dir  = './fig/axenic_heatmap'
@@ -40,12 +40,11 @@ exp_i   <- args$i
 exp_a   <- args$a
 cond_i  <- args$c
 ctrl_i  <- args$v
-group_i <- args$g
 
 dds_i <- readRDS(glue('./{data_dir}/{exp_i}.Rds'))
 
 combined_ia  <- read.csv(glue('{data_dir}/combined/combined_intraaxenic_{cond_i}_{exp_a}.csv'), row.names=1)
-hm_ia        <- plotAxenicHeatmap(dds_i, combined_ia, group_i, conditions=c(cond_i, ctrl_i, 'phago_4h'))
+hm_ia        <- plotAxenicHeatmap(dds_i, combined_ia, conditions=c(cond_i, ctrl_i, 'phago_4h'))
 pdf(file=glue('{fig_dir}/axenic_heatmap_{cond_i}_{exp_a}.pdf'), width=8, height=10)
 draw(hm_ia)
 dev.off()

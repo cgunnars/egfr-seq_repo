@@ -24,16 +24,19 @@ prepEnv <- function() {
     library(enrichplot,quietly=T)
 }
 
+# basic wrapper, assumes zUMIS output e.g. a raw counts x samples table .rds
 loadHost <- function(host_file) {
     read_data <- readRDS(host_file)
     return(read_data)
 }
 
+# for Mtb need to pass in gene -> Rv mapping 
 loadLocus <- function(locus_file) {
     locus_df <- read.csv(locus_file, row.names='Locus')
     return(locus_df)
 }
 
+# for pathogen, assume HTSeq output e.g. two columns for each sample (sample_NumReads, sample_TPM)
 loadPathogen <- function(pathogen_file, locus_file) {
     pathogen_data <- read.csv(pathogen_file, sep='\t', row.names='gene_id')
     #change from rv number to gene names
@@ -87,14 +90,15 @@ makeDDS <- function(file, sample_list, design, is_pathogen=T, locus_file=NA) {
     return(dds)
 }
 
-
+# removes human pseudogenes 
 remove_pseudo <- function(genes) {
-    genes <- grep(pattern = "^{^RP[0-9]|^CTD-|^AC0[0-9]}", genes, 
+    genes <- grep(pattern = "^{^RP[0-9]|^CTD-|^AC0[0-9]|^MT}", genes, 
                   value=T, invert=T)
     return(genes)
 }
 
-# input: two scaled matrices
+# input: two scaled matrices 
+# calculates correlation and returns results list, with rho and p-value
 calc_cor <- function(vsd1, vsd2) {
     
     rho_cor <- matrix(nrow=nrow(vsd1), ncol(vsd2))
@@ -116,6 +120,7 @@ calc_cor <- function(vsd1, vsd2) {
     return(res)
 }
 
+#wrapper for reading txt files
 readtxt <- function(file) {
     con <- file(file, open="r")
     txt <- readLines(con)
@@ -194,53 +199,8 @@ getDEGs_category <- function(dds, coef, group=NA, pthresh = 0.05, fcthresh_high=
 
 ## modes -- joint, within the same dds object, compare coef1 and coef2 (e.g. drug A vs drug B)
 #           single, within two separate dds objects, compare coef1 and coef1 (e.g. axenic vs intra)
-getDEGs_comparison <- function(dds1, dds2, coef1, coef2, group1=NA, group2=NA, fcthresh_low=0.7, mode='single') {
-    res_1 <- getDEGs_category(dds1, coef1, group=group1, fcthresh_low=fcthresh_low)
-    res_2 <- getDEGs_category(dds2, coef2, group=group2, fcthresh_low=fcthresh_low)
-    if (mode == 'joint') {
-        ## assumes that dds1 and dds2 are the same thing....
-        coef_split1 <- coef1 %>% str_replace(., glue('{group1}_'), '') %>% str_split(., '_vs_')
-        coef_split1 <- coef_split1[[1]][1] 
-        coef_split2 <- coef2 %>% str_replace(., glue('{group1}_'), '') %>% str_split(., '_vs_')
-        coef_split2 <- coef_split2[[1]][1]
-
-        coef_12     <- glue('{group}_{coef_split1}_vs_{coef_split2}')  
-        res_12   <- getDEGs_category(dds1, coef_12, group=group1, fcthresh_low=fcthresh_low)
-
-        res_list <- list(res_1, res_2, res_12)
-        resnames <- list('1', '2', '12')
-    } else {
-        res_list <- list(res_1, res_2)
-        resnames <- list('1', '2')
-    }
-    combined_rownames <- Reduce(intersect, lapply(res_list, function(i) rownames(i)))
-    combined_colnames <- c('log2FoldChange', 'DE', 'notDE', 'baseMean', 'padj')
-    combined <- do.call(cbind,
-                        lapply(res_list, function(i) i[combined_rownames, combined_colnames])
-                )
-    colnames(combined) <- unlist(lapply(resnames, 
-                                 function(i) 
-                                     c(glue('FC_{i}'), glue('DE_{i}'), glue('notDE_{i}'), glue('baseMean_{i}'), glue('padj_{i}'))
-                                 ))
-    combined$category <- 'mixed evidence'
-    combined[combined$DE_1 & !combined$notDE_2, 'category'] <- 'DE 1, DE 2 not excluded'
-    combined[combined$DE_1 & abs(combined$FC_2) > fcthresh_low & !combined$DE_2, 'category'] <- 'DE 1, DE 2 likely'
-    combined[combined$DE_1 & combined$notDE_2, 'category']  <- 'DE 1, DE 2 unlikely'                          
-    combined[combined$DE_2 & combined$notDE_1, 'category']  <- 'DE 2, DE 1 unlikely'
-    combined[combined$DE_2 & !combined$notDE_1, 'category'] <- 'DE 2, DE 1 not excluded'
-    combined[combined$DE_2 & abs(combined$FC_1) > fcthresh_low & !combined$DE_1, 'category'] <- 'DE 2, DE 1 likely'
-    combined[combined$DE_1 & combined$DE_2, 'category']     <- 'DE 1, DE 2'
-    combined[combined$notDE_1 & combined$notDE_2, 'category'] <- 'low change'
-
-    # for joint mode, use differential expression information to triage DEGs 
-    if (mode == 'joint') { 
-        combined[combined$DE_1 & !combined$notDE_2 & !combined$DE_2 & combined$DE_12, 'category'] <- 'DE 1, DE 2 unlikely'
-        combined[combined$DE_2 & !combined$notDE_1 & !combined$DE_1 & combined$DE_12, 'category'] <- 'DE 2, DE 1 unlikely'
-    } 
-    return(combined)
-}
-
-compareDEGs <- function(stem1, stem2, coef1, coef2, mode='axenic', fcthresh_low=0.7) {
+## uses previously computed DEGs to do this
+compareDEGs <- function(stem1, stem2, coef1, coef2, mode='single', fcthresh_low=0.7) {
     res_1 <- read.csv(glue('./data/DE_results/{stem1}_{coef1}_full.csv'), row.names=1)
     res_2 <- read.csv(glue('./data/DE_results/{stem2}_{coef2}_full.csv'), row.names=1)
     if (mode == 'joint' & stem1 == stem2) {
@@ -297,13 +257,13 @@ compareDEGs <- function(stem1, stem2, coef1, coef2, mode='axenic', fcthresh_low=
 }
 
 ### PLOTTING
-plotAxenicHeatmap <- function(dds, combined, group, conditions, mode='axenic') {
+plotAxenicHeatmap <- function(dds, combined, conditions, mode='axenic') {
     set.seed(3)
     vsd  <- assays(dds)[['vsd']]
-    
+    group <- as.character(design(dds))[-1] 
     col_fun = getFCColors()
    
-    if (mode == 'axenic') {
+    if (mode == 'axenic') { # produces heatmap annotated according to "likely axenic effect"
         degs <- rownames(combined[combined$DE_1, ])
     
         annotation_row <- data.frame(category=combined[degs, 'category'], 
@@ -314,7 +274,7 @@ plotAxenicHeatmap <- function(dds, combined, group, conditions, mode='axenic') {
         names(col$category) <- c('DE 1, DE 2', 'DE 1, DE 2 likely', 
                                  'DE 1, DE 2 unlikely', 'DE 1, DE 2 not excluded')
         gap = c(1,5,5)
-    } else if (mode == 'joint') {
+    } else if (mode == 'joint') { # produces a heatmap with DEGs from cond 1 AND cond 2
         degs <- rownames(combined[combined$DE_1 | combined$DE_2, ])
         annotation_row <- data.frame(
                                      fc_1=combined[degs, 'FC_1'], 
@@ -332,7 +292,7 @@ plotAxenicHeatmap <- function(dds, combined, group, conditions, mode='axenic') {
                                  'DE 2, DE 1 unlikely') 
         col$category <- as.factor(col$category) #, levels=names(col$category))
         gap = c(1, 5, 1, 5)
-    } else if (mode == 'ref') {
+    } else if (mode == 'ref') { # produces a heatmap with DEGs from cond 1 + whether , currently assumes we have 3 total conds
         degs <- rownames(combined[combined$DE_1, ])
         annotation_row <- data.frame(
                                      fc_1 = combined[degs, 'FC_1'],
@@ -370,10 +330,14 @@ getHeight <- function(degs) {
     return(length(degs) / 5 + 4)
 }
 
-plotBasicHeatmap <- function(degs, dds, group, conditions, cluster_columns=TRUE, row_km=1) {
+getWidth <- function(conditions) {
+    return(length(conditions) * 2)
+}
+
+plotBasicHeatmap <- function(degs, dds, conditions, cluster_columns=TRUE, row_km=1) {
     set.seed(3)
     vsd <- assays(dds)[['vsd']]
-
+    group <- as.character(design(dds))[-1] 
     mat_subset <- vsd[degs, vsd[[group]] %in% conditions]
     scaled_mat <- t(scale(t(assay(mat_subset))))
     mat_subset[[group]] <- factor(mat_subset[[group]], levels=conditions)

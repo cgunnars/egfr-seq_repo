@@ -1,3 +1,7 @@
+# for three conditions relative to the same shared ctrl in the same experiment,
+# plot a heatmap of DEGs in condition 1 + DE status in other two conditions 
+# i.e. mappings of "shared DEG with condition 2?" 
+
 source('src/utilities.R')
 prepEnv()
 
@@ -6,10 +10,8 @@ parser <- ArgumentParser()
 parser$add_argument('-i', nargs=1, type='character') #experiment name
 parser$add_argument('-r', nargs=1, type='character') #ctrl condition
 parser$add_argument('-c', nargs=3, type='character') #exp conditions, "reference" should be listed first
-parser$add_argument('-g', nargs=1, type='character') #group
 args <- parser$parse_args()
 
-group = args$g
 ctrl  = args$r
 conds = args$c
 
@@ -26,7 +28,7 @@ dds_intra <- readRDS(glue('./{data_dir}/{experiment}.Rds'))
 
 combined_ref12 <- read.csv(glue('{data_dir}/combined/{experiment}_{ref}_{cond1}_{cond2}.csv'), row.names=1)
 
-hm_ref12 <- plotAxenicHeatmap(dds_intra, combined_ref12, group, conditions=conditions, mode='ref')
+hm_ref12 <- plotAxenicHeatmap(dds_intra, combined_ref12, conditions=conditions, mode='ref')
 
 fig_height = 5 + length(combined_ref12[combined_ref12$DE_1, ]) / 2.5 
 fig_width  = length(conditions) * 2 

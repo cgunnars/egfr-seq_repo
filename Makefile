@@ -10,7 +10,7 @@ axenic_ctrl = DMSO
 intra_conds := gef_d1 pel_d1 sara_d1
 intra_ctrl = DMSO_d1
 intrahost_conds := gef pel sara
-host_ctrl = DMSO
+intrahost_ctrl = DMSO
 intraaxenic_conds := gef_d1 pel_d1
 # name of design --> composite design term Drug_Day or Drug_Dose 
 axenic_design := Drug
@@ -115,6 +115,7 @@ clean: $(clean_df) $(clean_dds)
 data/DE_results/%.Rds: src/proc/runDE.R data/clean_dds/%.Rds data/comparisons/comparisons_%.txt
 	Rscript $< -i $(word 2, $^) -c $(word 3, $^)
 ## also generates volcano plot and DE results table
+## right now, if you want to make comparisons of multiple DEGs vs the same reference, you have to have them in the comparisons.txt
 fig/DE_results/$(abx_stem)_volcano_%.pdf: data/DE_results/$(abx_stem).Rds #must exist in comparisons.txt to rebuild correctly
 	@if test -f $@; then :; else\
 		rm -f $<; \
@@ -165,7 +166,7 @@ data/DE_results/$(intra6h_stem)_%_full.csv: data/DE_results/$(intra6h_stem).Rds
 		rm -f $<; \
 		make $<; \
 	fi
-## use list of comparisons to generate a list of results tables that should exist
+## use list of comparisons to generate a list of DE results tables that should exist
 axenic_de := $(foreach n, $(shell cat data/comparisons/comparisons_$(axenic_stem).txt), $(addprefix data/DE_results/$(axenic_stem)_, $(addsuffix _full.csv, $n)))
 abx_de := $(foreach n, $(shell cat data/comparisons/comparisons_$(abx_stem).txt), $(addprefix data/DE_results/$(abx_stem)_, $(addsuffix _full.csv, $n)))
 6p_de := $(foreach n, $(shell cat data/comparisons/comparisons_$(intra6p_stem).txt), $(addprefix data/DE_results/$(intra6p_stem)_, $(addsuffix _full.csv, $n)))
@@ -195,7 +196,10 @@ fig/chem_info/scaffold_grid.pdf: src/getSMILES.py
 		make $<; \
 	fi
 
-fig1: fig/chem_info/tanimoto.svg fig/chem_info/EGFR-spec-heatmap.svg fig/chem_info/EGFR-kd-ctrl.svg fig/chem_info/scaffold_grid.pdf
+fig/chem_info/Adaptive_signature_heatmap.pdf: src/plotSciPlex.R data/source_data/sci-plex/adaptive_resistance_upgenes_zscored.RDS data/source_data/sci-plex/Annotations_final_RG.cs 
+	Rscript $<
+fig1: fig/chem_info/tanimoto.svg fig/chem_info/EGFR-kd-ctrl.svg 
+sfig_cheminfo: fig/chem_info/scaffold_grid.pdf fig/chem_info/EGFR-spec-heatmap.svg fig/chem_info/Adaptive_signature_heatmap.pdf
 
 ## FIGURE 2 ANTIBIOTIC EFFECTS
 fig2: fig/abx-dose/pca_all_1_2.pdf fig/abx-dose/var-heatmap.pdf fig/abx-dose/lap-heatmap.pdf  
@@ -271,7 +275,7 @@ combined_host_tables := $(addprefix data/DE_results/combined/$(intra6h_stem)_, $
 relative_heatmap_host: $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(intra6h_stem)_,  $(combined_h_conds))))
 relative_heatmap_pathogen: $(addprefix fig/relative_heatmap/relative_heatmap_, $(addsuffix .pdf, $(addprefix $(intra6p_stem)_,  $(combined_p_conds)))) 
 fig/relative_heatmap/relative_heatmap_$(intra6p_stem)_%.pdf: src/relative_heatmap.R data/DE_results/$(intra6p_stem).Rds data/DE_results/combined/$(intra6p_stem)_%.csv 
-	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c $(subst _d1_,_d1 ,$*) -g Drug_Day
+	Rscript $< -i $(intra6p_stem) -r DMSO_d1 -c $(subst _d1_,_d1 ,$*) 
 relative_heatmaps: $(relative_heatmap_host) $(relative_heatmap_pathogen)
 
 
@@ -291,11 +295,6 @@ fig/combined_bar/$(intra6p_stem)_vennlikely.pdf: fig/combined_bar/$(intra6p_stem
 		rm -f $<; \
 		make $<; \
 	fi
-fig/unique-shared_heatmap/$(intra6p_stem)_%.pdf: fig/combined_bar/$(intra6p_stem)_fill.pdf
-	@if test -f $@; then :; else\
-		rm -f $<; \
-		make $<; \
-	fi
 data/DE_results/$(intra6p_stem)_%_unique.txt: fig/combined_bar/$(intra6p_stem)_fill.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
@@ -308,25 +307,30 @@ data/DE_results/$(intra6p_stem)_likely_shared.txt: fig/combined_bar/$(intra6p_st
 	fi
 combined_bar: fig/combined_bar/$(intra6p_stem)_fill.pdf fig/combined_bar/$(intra6h_stem)_fill.pdf
 
-## For the list of likely shared and drug-specific genes, calculate iModulon enrichment and plot iModulon mappings as heatmap
+## For the list of likely shared and drug-specific genes, calculate iModulon enrichment -> stacked bar plot, also plot iModulon mappings as heatmap and iModulon terms as heatmap
 drug_iMod_enrich_tables: $(addprefix data/enrich/all_drugs_, $(addsuffix .csv, $(shared-unique_p_suffix)))
 unique_shared_heatmaps: $(addprefix fig/unique-shared_heatmap/$(intra6p_stem)_, $(addsuffix .pdf, $(shared-unique_p_suffix)))
-fig/relative_heatmap/all_drugs_allcomps_iModulon.pdf: src/geneListToGSEA.R $(shared-unique_p_genelists) 
+fig/imodulon/all_drugs_allcomps_iModulon.pdf: src/geneListToGSEA.R $(shared-unique_p_genelists) 
 	Rscript $< -c all -m drugs -n 320 -e $(intra6p_stem) 
-data/enrich/all_drugs_%.csv: fig/relative_heatmap/all_drugs_iModulon.pdf
+data/enrich/all_drugs_%.csv: fig/imodulon/all_drugs_iModulon.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-fig/unique-shared_heatmap/$(intra6p_stem)_%.pdf: fig/relative_heatmap/all_drugs_iModulon.pdf
+fig/unique-shared_heatmap/$(intra6p_stem)_%.pdf: fig/imodulon/all_drugs_iModulon.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-iMod_enrich_unique: fig/relative_heatmap/all_drugs_allcomps_iModulon.pdf
+fig/imodulon/hm_pathogen_iModulon_plot_%.pdf: fig/imodulon/all_drugs_iModulon.pdf
+	@if test -f $@; then :; else\
+		rm -f $<; \
+		make $<; \
+	fi
+iMod_enrich_unique: fig/imodulon/all_drugs_allcomps_iModulon.pdf
 
 ### SUPPLEMENTARY FIGURE POST PHAGOCYTOSIS 
-phago_plots := $(addprefix fig/time-dependent/phago_, $(addsuffix _hm.pdf, $(addprefix $(intra6p_stem)_, $(intra_conds))))
+phago_plots := $(addprefix fig/time-dependent/phago_, $(addsuffix _hm.pdf, $(addprefix $(intra6p_stem)_, $(intra_conds)_)))
 sfig_phago: $(phago_plots) fig/time-dependent/phago_$(intrap_stem)_pel_d1_hm.pdf
 
 fig/time-dependent/phago_$(intra6p_stem)_%_hm.pdf: src/plotPhago.R data/DE_results/$(intra6p_stem).Rds	
@@ -357,12 +361,15 @@ data/enrich/gsea_%.csv: fig/gsea/gsea_%.pdf
 		make $<; \
 	fi
 gsea: $(axenic_gsea) $(intra_gsea) fig/gsea/gsea_pel_d1_$(intrap_stem)_intra.pdf
+gsea_intra_tables := $(addsuffix data/enrich/gsea/_, $(addsuffix _$(intra6p_stem)_intra.csv, $(intra6p_conds)))
+gsea_axenic_tables := $(addsuffix data/enrich/gsea/_, $(addsuffix _$(axenic_stem)_axenic.csv, $(axenic_conds)))
+gsea_tables: $(gsea_intra_tables) $(gsea_axenic_tables)
 
 ### SUPPLEMENTARY FIGURE HOST INFORMATION
-sfig_host: fig/combined_bar/$(intra6h_stem)_vennlikely.pdf
-
+sfig_host: fig/combined_bar/$(intra6h_stem)_vennlikely.pdf #fig/unique-shared_heatmap/$(intra6h_stem)_pel_unique.pdf fig/unique-shared_heatmap/$(intra6h_stem)_likely_shared.pdf
+## this is the same rule as for pathogen 
 fig/relative_heatmap/relative_heatmap_$(intra6h_stem)_%.pdf: src/relative_heatmap.R data/DE_results/$(intra6h_stem).Rds data/DE_results/combined/$(intra6h_stem)_%.csv 
-	Rscript $< -i $(intra6h_stem) -r DMSO -c $(subst _, ,$*) -g Drug
+	Rscript $< -i $(intra6h_stem) -r DMSO -c $(subst _, ,$*) 
 
 fig/combined_bar/$(intra6h_stem)_fill.pdf: src/combined_bar_venn.R $(combined_host_tables)
 	Rscript $< -e $(intra6h_stem) -c pel gef sara -r DMSO -g Drug
@@ -387,9 +394,13 @@ data/DE_results/$(intra6h_stem)_likely_shared.txt: fig/combined_bar/$(intra6h_st
 		rm -f $<; \
 		make $<; \
 	fi
-
+# could design a more flexible rule, but want to sent to a specific directory 
+fig/unique-shared_heatmap/$(intra6h_stem)_likely_shared.pdf: src/plotBasicHeatmap.R data/DE_results/$(intra6h_stem).Rds data/DE_results/$(intra6h_stem)_likely_shared.txt
+	Rscript -i $(word 2, $^) -g $(word 3, $^) -o $@ -c $(intrahost_conds) $(intrahost_ctrl) 
+fig/unique-shared_heatmap/$(intra6h_stem)_pel_d1_unique.pdf: src/plotBasicHeatmap.R data/DE_results/$(intra6h_stem).Rds data/DE_results/$(intra6h_stem)_pel_d1_unique.txt
+	Rscript -i $(word 2, $^) -g $(word 3, $^) -o $@ -c $(intrahost_conds) $(intrahost_ctrl) 
 ## FIGURE 5 AXENIC EFFECTS
-fig5: fig/DE_results/$(axenic_stem)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(axenic_stem)_volcano_gef_vs_DMSO.pdf fig/axenic_heatmap/venn_biplot_pel_d1.pdf $(axenic_joint_heatmaps) iMod_enrich_axenic	
+fig5: fig/DE_results/$(axenic_stem)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(axenic_stem)_volcano_gef_vs_DMSO.pdf fig/axenic_heatmap/venn-biplot_pel_d1_$(axenic_stem).pdf $(axenic_joint_heatmaps) iMod_enrich_axenic	
 
 # first calculate whether intracellular DEGs are "likely axenic DEGs"
 data/DE_results/combined/combined_intraaxenic_%_d1_$(axenic_stem).csv: src/makeCombinedDE.R data/DE_results/$(axenic_stem).Rds data/DE_results/$(intra6p_stem).Rds
@@ -406,12 +417,12 @@ combined_intraaxenic_tables: $(combined_intraaxenic) $(combined_intraabx)
 
 ## AXENIC EFFECT CATEGORIZATION PLOT + HEATMAP
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(axenic_stem).pdf: src/axenic_heatmap.R data/DE_results/$(intra6p_stem).Rds data/DE_results/combined/combined_intraaxenic_%_d1_$(axenic_stem).csv
-	Rscript $< -i $(intra6p_stem) -a $(axenic_stem) -c $*_d1 -r DMSO_d1 -g Drug_Day 
+	Rscript $< -i $(intra6p_stem) -a $(axenic_stem) -c $*_d1 -r $(intra_ctrl) 
 fig/axenic_heatmap/axenic_heatmap_%_d1_$(abx_stem).pdf: src/axenic_heatmap.R data/DE_results/$(abx_stem).Rds data/DE_results/$(intra6p_stem).Rds data/DE_results/combined/combined_intraaxenic_%_d1_$(abx_stem).csv 
-	Rscript $< -i $(intra6p_stem) -a $(abx_stem) -c $*_d1 -r DMSO_d1 -g Drug_Day
+	Rscript $< -i $(intra6p_stem) -a $(abx_stem) -c $*_d1 -r $(intra_ctrl) 
 fig/axenic_heatmap/axenic_heatmap_pel_d1_$(intrap_stem).pdf: src/axenic_heatmap.R data/DE_results/$(intrap_stem).Rds data/DE_results/$(intra6p_stem).Rds data/DE_results/combined/combined_intraaxenic_pel_d1_$(intrap_stem).csv
-	Rscript $< -i $(intra6p_stem) -a $(intrap_stem) -c pel_d1 -r DMSO_d1 -g Drug_Day
-fig/axenic_heatmap/venn_biplot_%.pdf: fig/axenic_heatmap/axenic_heatmap_%.pdf
+	Rscript $< -i $(intra6p_stem) -a $(intrap_stem) -c pel_d1 -r $(intra_ctrl)
+fig/axenic_heatmap/venn-biplot_%.pdf: fig/axenic_heatmap/axenic_heatmap_%.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
@@ -426,26 +437,26 @@ axenic_enrich_suffix := axenic axenic_likely intra intra_unique intra_unique_exc
 gef_axenic_enrich := $(addprefix data/enrich/gef_d1_intraaxenic_, $(addsuffix .csv, $(axenic_enrich_suffix)))
 pel_axenic_enrich := $(addprefix data/enrich/pel_d1_intraaxenic_, $(addsuffix .csv, $(axenic_enrich_suffix)))
 axenic_enrich_tables: $(gef_axenic_enrich) $(pel_axenic_enrich)
-fig/relative_heatmap/%_intraaxenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(intra6p_stem)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_$(axenic_stem).csv
+fig/imodulon/%_intraaxenic_allcomps_iModulon.pdf: src/geneListToGSEA.R data/DE_results/$(intra6p_stem)_likely_shared.txt data/DE_results/combined/combined_intraaxenic_%_$(axenic_stem).csv
 	Rscript $< -c $* -m intraaxenic -e $(intra6p_stem) $(axenic_stem)
-data/enrich/pel_d1_intraaxenic_%.csv: fig/relative_heatmap/pel_d1_intraaxenic_allcomps_iModulon.pdf
+data/enrich/pel_d1_intraaxenic_%.csv: fig/imodulon/pel_d1_intraaxenic_allcomps_iModulon.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; 
 	fi
-data/enrich/gef_d1_intraaxenic_%.csv: fig/relative_heatmap/gef_d1_intraaxenic_allcomps_iModulon.pdf
+data/enrich/gef_d1_intraaxenic_%.csv: fig/imodulon/gef_d1_intraaxenic_allcomps_iModulon.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-fig/relative_heatmap/%_single_iModulon.pdf: src/geneListToGSEA.R
+fig/imodulon/%_single_iModulon.pdf: src/geneListToGSEA.R
 	Rscript $< -c $* -m single -e $(intrap_stem)
-data/enrich/%_single_pel_d1.csv: fig/relative_heatmap/%_single_iModulon.pdf
+data/enrich/%_single_pel_d1.csv: fig/imodulon/%_single_iModulon.pdf
 	@if test -f $@; then :; else\
 		rm -f $<; \
 		make $<; \
 	fi
-iMod_enrich_axenic: fig/relative_heatmap/pel_d1_intraaxenic_allcomps_iModulon.pdf fig/relative_heatmap/gef_d1_intraaxenic_allcomps_iModulon.pdf
+iMod_enrich_axenic: fig/imodulon/pel_d1_intraaxenic_allcomps_iModulon.pdf fig/imodulon/gef_d1_intraaxenic_allcomps_iModulon.pdf
 	
 
 ## SUPPLEMENTARY FIGURE -- WALD TEST SCHEME

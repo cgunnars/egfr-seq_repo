@@ -87,7 +87,7 @@ plotEnrich <- function(tables, gsea_dfs, outname) {
         geom_text(aes(label=ifelse(p < 0.05, scientific(p, digits = 3), "")),
                   position=position_fill(vjust = .5)) +
         theme_classic()
-    ggsave(glue('./fig/relative_heatmap/{outname}_allcomps_iModulon.pdf'),
+    ggsave(glue('./fig/imodulon/{outname}_allcomps_iModulon.pdf'),
            width=4 * length(tables), height=3, dpi=300, units='in', create.dir=T)
 
 }
@@ -228,10 +228,10 @@ if (mode == 'drugs') {
 				  FC_gef_d1  = getFCColors(),
 				  FC_pel_d1  = getFCColors())
 
-    		hm <- plotBasicHeatmap(genes_plot, dds, group, c(conditions, 'DMSO_d1'))
+    		hm <- plotBasicHeatmap(genes_plot, dds, c(conditions, 'DMSO_d1'))
 		hm <- rowAnnotation(df = fc_plot, col=anno_cols) + hm
 
-    		pdf(glue('./fig/relative_heatmap/hm_pathogen_iModulon_{plot}.pdf'))
+    		pdf(glue('./fig/imodulon/hm_pathogen_iModulon_{plot}.pdf'))
     		draw(hm)
     		dev.off()
 	}
@@ -242,7 +242,7 @@ if (mode == 'drugs') {
 	mod_annos  <- lapply(gene_lists, function(x) makeModAnno(gene_mod, x))
 
 	lapply(seq(gene_lists), function(i) {
-	       		hm <- plotBasicHeatmap(gene_lists[[i]], dds, group, c(conditions, 'DMSO_d1'))
+	       		hm <- plotBasicHeatmap(gene_lists[[i]], dds, c(conditions, 'DMSO_d1'))
 			hm <- rowAnnotation(df=mod_annos[[i]], 
 				   	    col = list(iModulon_name = mod_colors, iModulon_name_2 = mod_colors)) + hm
 			pdf(file=glue('./fig/unique-shared_heatmap/{exp_intra}_{comp_names[i]}.pdf'), 

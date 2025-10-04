@@ -37,7 +37,7 @@ anno_cols <- list(getFCColors(),
 names(anno_cols) <- colnames(fc_cond)
 		  
 anno_df <- fc_cond 
-hm <- plotBasicHeatmap(degs, dds, 'Drug_Day', c('phago_4h', cond, ref), cluster_columns=F, row_km=4)
+hm <- plotBasicHeatmap(degs, dds, c('phago_4h', cond, ref), cluster_columns=F, row_km=4)
 hm <- rowAnnotation(df = anno_df, col=anno_cols) + hm
 	      
 
