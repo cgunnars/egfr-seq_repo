@@ -25,7 +25,7 @@ intra_biorep=Donor
 all_stems := $(axenic_stem) $(abx_stem) $(intra6h_stem) $(intra6p_stem) $(intrap_stem)
 
 figs: fig1 fig2 fig3 fig4 fig5
-sfigs: sfig_dose-upset sfig_regulators sfig_phago sfig_degmethod relative_heatmap_host 
+sfigs: sfig_dose-upset sfig_regulators sfig_phago sfig_degmethod sfig_host
 tables: DE_tables combined_host_tables combined_pathogen_tables axenic_enrich_tables drug_iMod_enrich_tables
 
 ########### 00 GROWTH ##########
@@ -252,7 +252,7 @@ fig/abx-dose/pca_all_1_2.pdf: fig/abx-dose/lap-var_upset.pdf
 		make $<; \
 	fi
 
-## FIGURE 4 intraCELLULAR 
+## FIGURE 4 INTRACELLULAR 
 fig4: $(relative_heatmaps_pathogen) iMod_enrich_unique fig/growth/RNAseq_lux.pdf fig/combined_bar/$(intra6p_stem)_fill.pdf fig/combined_bar/$(intra6p_stem)_n.pdf fig/combined_bar/$(intra6p_stem)_vennlikely.pdf
 
 
@@ -359,6 +359,8 @@ data/enrich/gsea_%.csv: fig/gsea/gsea_%.pdf
 gsea: $(axenic_gsea) $(intra_gsea) fig/gsea/gsea_pel_d1_$(intrap_stem)_intra.pdf
 
 ### SUPPLEMENTARY FIGURE HOST INFORMATION
+sfig_host: fig/combined_bar/$(intra6h_stem)_vennlikely.pdf
+
 fig/relative_heatmap/relative_heatmap_$(intra6h_stem)_%.pdf: src/relative_heatmap.R data/DE_results/$(intra6h_stem).Rds data/DE_results/combined/$(intra6h_stem)_%.csv 
 	Rscript $< -i $(intra6h_stem) -r DMSO -c $(subst _, ,$*) -g Drug
 
@@ -387,12 +389,14 @@ data/DE_results/$(intra6h_stem)_likely_shared.txt: fig/combined_bar/$(intra6h_st
 	fi
 
 ## FIGURE 5 AXENIC EFFECTS
-fig5: fig/DE_results/$(axenic_stem)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(axenic_stem)_volcano_gef_vs_DMSO.pdf $(axenic_joint_heatmaps) iMod_enrich_axenic	
+fig5: fig/DE_results/$(axenic_stem)_volcano_pel_vs_DMSO.pdf fig/DE_results/$(axenic_stem)_volcano_gef_vs_DMSO.pdf fig/axenic_heatmap/venn_biplot_pel_d1.pdf $(axenic_joint_heatmaps) iMod_enrich_axenic	
 
+# first calculate whether intracellular DEGs are "likely axenic DEGs"
 data/DE_results/combined/combined_intraaxenic_%_d1_$(axenic_stem).csv: src/makeCombinedDE.R data/DE_results/$(axenic_stem).Rds data/DE_results/$(intra6p_stem).Rds
 	Rscript $< -i $(intra6p_stem) $(axenic_stem) -r $(intra_ctrl) $(axenic_ctrl) -c $*_d1 $*
 data/DE_results/combined/combined_intraaxenic_%_d1_$(abx_stem).csv: src/makeCombinedDE.R data/DE_results/$(abx_stem).Rds data/DE_results/$(intra6p_stem).Rds
 	Rscript $< -i $(intra6p_stem) $(abx_stem) -r $(intra_ctrl) $*_5 -c $*_d1 $*_25
+# this method also works for comparing DEGs in two experiments with same design (pilot 1 donor-4rep vs 6 donor experiment)
 data/DE_results/combined/combined_intraaxenic_pel_d1_$(intrap_stem).csv: src/makeCombinedDE.R data/DE_results/$(intrap_stem).Rds data/DE_results/$(intra6p_stem).Rds
 	Rscript $< -i $(intra6p_stem) $(intrap_stem) -r $(intra_ctrl) $(intra_ctrl) -c pel_d1 pel_d1
 
