@@ -1,5 +1,5 @@
 # EGFR inhibitors + Mtb
-This repo contains data and code necessary to reproduce all analyses and graphs for Gunnarsson et al 2025.
+This repo contains data and code necessary to reproduce all analyses and graphs for Gunnarsson et al 2025. To align and quantify from .fastqs, see https://github.com/cgunnars/dualrnaseq_umi/, which modifies nf-core's existing dualrnaseq pipeline to allow UMI-based deduplication.
 
 # Installing
 You can find a list of required Python and R packages in `requirements_python.txt` and `requirements_R.txt`. 
